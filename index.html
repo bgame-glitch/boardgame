@@ -17,6 +17,7 @@
     --accent: #2f5d50;
     --accent-text: #fff;
     --loc: #b5532f;
+    --shade: rgba(0, 0, 0, .45);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -28,6 +29,7 @@
       --accent: #6fb39d;
       --accent-text: #10201b;
       --loc: #f0a07d;
+      --shade: rgba(0, 0, 0, .65);
     }
   }
   * { box-sizing: border-box; }
@@ -49,6 +51,11 @@
     font-size: 13px; background: none; border: 1px solid var(--line);
     color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
   }
+  #search {
+    width: 100%; font-size: 16px; padding: 9px 12px; margin-bottom: 10px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--text);
+  }
   .group { margin-bottom: 8px; }
   .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
@@ -62,10 +69,10 @@
   main { padding: 12px 16px 40px; }
   #count { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
   .game {
+    display: flex; gap: 12px; align-items: flex-start;
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
-    padding: 12px 14px; margin-bottom: 8px;
+    padding: 12px 14px; margin-bottom: 8px; cursor: pointer;
   }
-  .game { display: flex; gap: 12px; align-items: flex-start; }
   .thumb {
     flex: 0 0 64px; width: 64px; height: 64px; border-radius: 8px;
     background: var(--bg); display: flex; align-items: center; justify-content: center;
@@ -79,15 +86,51 @@
   .meta { font-size: 13px; color: var(--muted); }
   .loc { margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--loc); }
   .empty, .msg { text-align: center; color: var(--muted); padding: 40px 0; }
+
+  /* 상세 보기 */
+  #sheet-bg {
+    position: fixed; inset: 0; z-index: 20; background: var(--shade);
+    display: none; align-items: flex-end; justify-content: center;
+  }
+  #sheet-bg.open { display: flex; }
+  #sheet {
+    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    background: var(--card); border-radius: 18px 18px 0 0;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
+  }
+  #sheet .close {
+    float: right; border: none; background: none; color: var(--muted);
+    font-size: 24px; line-height: 1; cursor: pointer; padding: 0 4px;
+  }
+  #sheet .big {
+    width: 140px; height: 140px; margin: 4px auto 12px; border-radius: 10px;
+    background: var(--bg); display: flex; align-items: center; justify-content: center;
+    font-size: 56px; overflow: hidden;
+  }
+  #sheet .big img { width: 100%; height: 100%; object-fit: contain; }
+  #sheet h2 { font-size: 20px; margin: 0 0 4px; text-align: center; }
+  #sheet .rating { text-align: center; margin-bottom: 12px; }
+  #sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 14px; font-size: 15px; }
+  #sheet dt { color: var(--muted); }
+  #sheet dd { margin: 0; }
+  #sheet .loc { font-size: 17px; text-align: center; margin: 0 0 16px; }
+  .btn {
+    display: block; text-align: center; text-decoration: none;
+    padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px;
+    border: 1px solid var(--line); color: var(--text); background: var(--bg);
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 </style>
 </head>
 <body>
 <header>
   <h1>🎲 보드게임 찾기 <button id="reset">초기화</button></h1>
+  <input id="search" type="search" placeholder="게임 이름 검색" autocomplete="off">
   <div class="group"><div class="label">장르</div><div class="chips" id="f-genre"></div></div>
   <div class="group"><div class="label">세부장르</div><div class="chips" id="f-sub"></div></div>
   <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
   <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
+  <div class="group"><div class="label">플레이 시간</div><div class="chips" id="f-time"></div></div>
   <div class="group"><div class="label">정렬</div><div class="chips" id="f-sort"></div></div>
 </header>
 <main>
@@ -95,22 +138,31 @@
   <div id="list"><div class="msg">불러오는 중…</div></div>
 </main>
 
+<div id="sheet-bg"><div id="sheet" role="dialog" aria-modal="true"></div></div>
+
 <script>
 // ▼ 구글 시트를 "웹에 게시(CSV)" 한 주소를 여기에 붙여넣으세요. 비워두면 data.csv 파일을 읽습니다.
 const SHEET_CSV_URL = "";
 
 const PLAYER_OPTIONS = [2, 3, 4, 5, 6]; // 6 = 6명 이상
 const DIFF_LABEL = { 1: "★ 쉬움", 2: "★★ 보통", 3: "★★★ 어려움" };
+const TIME_OPTIONS = [
+  { key: "t30",  label: "30분 이하", test: t => t <= 30 },
+  { key: "t60",  label: "1시간 이하", test: t => t > 30 && t <= 60 },
+  { key: "t120", label: "1~2시간",   test: t => t > 60 && t <= 120 },
+  { key: "t121", label: "2시간 이상", test: t => t > 120 },
+];
 
 let games = [];
-const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set() };
+let query = "";
+const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set(), time: new Set() };
 
 const byName = (a, b) => a.name.localeCompare(b.name, "ko");
 const SORTS = {
-  name:     { label: "이름순",       fn: byName },
-  rating:   { label: "평점 높은순",   fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b) },
-  diffAsc:  { label: "쉬운 순",       fn: (a, b) => (a.diff || 99) - (b.diff || 99) || byName(a, b) },
-  diffDesc: { label: "어려운 순",     fn: (a, b) => (b.diff || 0) - (a.diff || 0) || byName(a, b) },
+  name:     { label: "이름순",     fn: byName },
+  rating:   { label: "평점 높은순", fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b) },
+  diffAsc:  { label: "쉬운 순",     fn: (a, b) => (a.diff || 99) - (b.diff || 99) || byName(a, b) },
+  diffDesc: { label: "어려운 순",   fn: (a, b) => (b.diff || 0) - (a.diff || 0) || byName(a, b) },
 };
 let sortKey = "name";
 
@@ -134,7 +186,7 @@ function parseCSV(text) {
   return rows.filter(r => r.some(v => v.trim() !== ""));
 }
 
-// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점, 이미지
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점, 이미지, 시간(분), 보드라이프번호
 function toGames(rows) {
   return rows.slice(1).map(r => ({
     name: (r[0] || "").trim(),
@@ -146,10 +198,15 @@ function toGames(rows) {
     loc: (r[6] || "").trim(),
     rating: parseFloat(r[7]) || null,
     img: (r[8] || "").trim(),
+    time: parseInt(r[9], 10) || null,
+    blId: (r[10] || "").trim(),
   })).filter(g => g.name);
 }
 
 const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+const norm = s => s.toLowerCase().replace(/\s+/g, "");
+const playersText = x => x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`;
+const timeText = t => !t ? "" : t >= 60 && t % 60 === 0 ? `${t / 60}시간` : t > 60 ? `${Math.floor(t / 60)}시간 ${t % 60}분` : `${t}분`;
 
 function chip(label, on, onClick) {
   const b = document.createElement("button");
@@ -186,6 +243,10 @@ function renderFilters() {
   [1, 2, 3].forEach(n =>
     d.appendChild(chip(DIFF_LABEL[n], sel.diff.has(n), () => { toggle(sel.diff, n); update(); })));
 
+  const tm = document.getElementById("f-time"); tm.innerHTML = "";
+  TIME_OPTIONS.forEach(o =>
+    tm.appendChild(chip(o.label, sel.time.has(o.key), () => { toggle(sel.time, o.key); update(); })));
+
   const so = document.getElementById("f-sort"); so.innerHTML = "";
   Object.entries(SORTS).forEach(([k, v]) =>
     so.appendChild(chip(v.label, sortKey === k, () => { sortKey = k; update(); })));
@@ -197,13 +258,26 @@ function subOptions() {
 }
 
 function matches(x) {
+  if (query && !norm(x.name).includes(query)) return false;
   if (sel.genre.size && !sel.genre.has(x.genre)) return false;
   if (sel.sub.size && !sel.sub.has(x.sub)) return false;
   if (sel.players !== null) {
     if (sel.players === 6 ? x.max < 6 : (x.min > sel.players || x.max < sel.players)) return false;
   }
   if (sel.diff.size && !sel.diff.has(x.diff)) return false;
+  if (sel.time.size) {
+    if (!x.time) return false;
+    if (!TIME_OPTIONS.some(o => sel.time.has(o.key) && o.test(x.time))) return false;
+  }
   return true;
+}
+
+function setImage(box, url) {
+  if (!url) return;
+  const img = document.createElement("img");
+  img.src = url; img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
+  box.textContent = ""; box.appendChild(img);
+  img.onerror = () => { box.textContent = "🎲"; }; // 이미지가 깨지면 기본 아이콘으로
 }
 
 function renderList() {
@@ -215,8 +289,8 @@ function renderList() {
   res.forEach(x => {
     const el = document.createElement("div");
     el.className = "game";
-    const players = x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`;
     const parts = [x.genre, x.sub].filter(Boolean).join(" · ");
+    const facts = [parts, playersText(x), x.time ? "⏱ " + timeText(x.time) : "", "★".repeat(x.diff)].filter(Boolean);
     el.innerHTML = `
       <div class="thumb">🎲</div>
       <div class="info">
@@ -224,24 +298,84 @@ function renderList() {
         <div class="meta"></div>
         <div class="loc"></div>
       </div>`;
-    if (x.img) {
-      const img = document.createElement("img");
-      img.src = x.img; img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
-      const t = el.querySelector(".thumb"); t.textContent = ""; t.appendChild(img);
-      img.onerror = () => { t.textContent = "🎲"; }; // 이미지가 깨지면 기본 아이콘으로
-    }
+    setImage(el.querySelector(".thumb"), x.img);
     el.querySelector(".name").textContent = x.name;
     el.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) : "";
-    el.querySelector(".meta").textContent = `${parts}  |  ${players}  |  ${"★".repeat(x.diff) || "-"}`;
+    el.querySelector(".meta").textContent = facts.join("  |  ");
     el.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
+    el.onclick = () => openSheet(x);
     list.appendChild(el);
   });
 }
 
+// ---------- 상세 보기 ----------
+const sheetBg = document.getElementById("sheet-bg");
+const sheet = document.getElementById("sheet");
+
+function openSheet(x) {
+  sheet.innerHTML = `
+    <button class="close" aria-label="닫기">×</button>
+    <div class="big">🎲</div>
+    <h2></h2>
+    <div class="rating"></div>
+    <div class="loc"></div>
+    <dl></dl>
+    <div class="links"></div>`;
+  setImage(sheet.querySelector(".big"), x.img);
+  sheet.querySelector("h2").textContent = x.name;
+  sheet.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) + " (BGG)" : "";
+  sheet.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
+
+  const rows = [
+    ["장르", [x.genre, x.sub].filter(Boolean).join(" · ")],
+    ["인원", playersText(x)],
+    ["시간", timeText(x.time)],
+    ["난이도", x.diff ? DIFF_LABEL[x.diff] : ""],
+  ].filter(r => r[1]);
+  const dl = sheet.querySelector("dl");
+  rows.forEach(([k, v]) => {
+    const dt = document.createElement("dt"); dt.textContent = k;
+    const dd = document.createElement("dd"); dd.textContent = v;
+    dl.append(dt, dd);
+  });
+
+  const links = sheet.querySelector(".links");
+  const yt = document.createElement("a");
+  yt.className = "btn primary"; yt.target = "_blank"; yt.rel = "noopener";
+  yt.href = "https://www.youtube.com/results?search_query=" + encodeURIComponent(x.name + " 보드게임 룰 설명");
+  yt.textContent = "▶ 룰 설명 영상 찾기";
+  links.appendChild(yt);
+  if (/^\d+$/.test(x.blId)) {
+    const bl = document.createElement("a");
+    bl.className = "btn"; bl.target = "_blank"; bl.rel = "noopener";
+    bl.href = "https://boardlife.co.kr/game/" + x.blId;
+    bl.textContent = "보드라이프에서 보기";
+    links.appendChild(bl);
+  }
+
+  sheet.querySelector(".close").onclick = closeSheet;
+  sheetBg.classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeSheet() {
+  sheetBg.classList.remove("open");
+  document.body.style.overflow = "";
+}
+sheetBg.addEventListener("click", e => { if (e.target === sheetBg) closeSheet(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
+
+// ---------- 시작 ----------
 function update() { renderFilters(); renderList(); }
 
+document.getElementById("search").addEventListener("input", e => {
+  query = norm(e.target.value); renderList();
+});
+
 document.getElementById("reset").onclick = () => {
-  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.players = null; sortKey = "name"; update();
+  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.time.clear(); sel.players = null;
+  sortKey = "name"; query = ""; document.getElementById("search").value = "";
+  update();
 };
 
 fetch(SHEET_CSV_URL || "data.csv", { cache: "no-store" })
