@@ -65,6 +65,14 @@
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: 12px 14px; margin-bottom: 8px;
   }
+  .game { display: flex; gap: 12px; align-items: flex-start; }
+  .thumb {
+    flex: 0 0 64px; width: 64px; height: 64px; border-radius: 8px;
+    background: var(--bg); display: flex; align-items: center; justify-content: center;
+    font-size: 28px; overflow: hidden;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: contain; }
+  .info { flex: 1; min-width: 0; }
   .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
   .name { font-size: 16px; font-weight: 700; }
   .rating { font-size: 14px; font-weight: 600; white-space: nowrap; }
@@ -126,7 +134,7 @@ function parseCSV(text) {
   return rows.filter(r => r.some(v => v.trim() !== ""));
 }
 
-// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점, 이미지
 function toGames(rows) {
   return rows.slice(1).map(r => ({
     name: (r[0] || "").trim(),
@@ -137,6 +145,7 @@ function toGames(rows) {
     diff: parseInt(r[5], 10) || 0,
     loc: (r[6] || "").trim(),
     rating: parseFloat(r[7]) || null,
+    img: (r[8] || "").trim(),
   })).filter(g => g.name);
 }
 
@@ -209,9 +218,18 @@ function renderList() {
     const players = x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`;
     const parts = [x.genre, x.sub].filter(Boolean).join(" · ");
     el.innerHTML = `
-      <div class="top"><div class="name"></div><div class="rating"></div></div>
-      <div class="meta"></div>
-      <div class="loc"></div>`;
+      <div class="thumb">🎲</div>
+      <div class="info">
+        <div class="top"><div class="name"></div><div class="rating"></div></div>
+        <div class="meta"></div>
+        <div class="loc"></div>
+      </div>`;
+    if (x.img) {
+      const img = document.createElement("img");
+      img.src = x.img; img.alt = ""; img.loading = "lazy"; img.referrerPolicy = "no-referrer";
+      const t = el.querySelector(".thumb"); t.textContent = ""; t.appendChild(img);
+      img.onerror = () => { t.textContent = "🎲"; }; // 이미지가 깨지면 기본 아이콘으로
+    }
     el.querySelector(".name").textContent = x.name;
     el.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) : "";
     el.querySelector(".meta").textContent = `${parts}  |  ${players}  |  ${"★".repeat(x.diff) || "-"}`;
