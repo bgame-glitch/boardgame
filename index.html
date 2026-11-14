@@ -202,8 +202,8 @@ const byName = (a, b) => a.name.localeCompare(b.name, "ko");
 const SORTS = {
   name:     { label: "이름순",     fn: byName },
   rating:   { label: "평점 높은순", fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b) },
-  diffAsc:  { label: "쉬운 순",     fn: (a, b) => (a.diff || 99) - (b.diff || 99) || byName(a, b) },
-  diffDesc: { label: "어려운 순",   fn: (a, b) => (b.diff || 0) - (a.diff || 0) || byName(a, b) },
+  diffAsc:  { label: "쉬운 순",     fn: (a, b) => (diffValue(a) ?? 99) - (diffValue(b) ?? 99) || byName(a, b) },
+  diffDesc: { label: "어려운 순",   fn: (a, b) => (diffValue(b) ?? -1) - (diffValue(a) ?? -1) || byName(a, b) },
 };
 let sortKey = "name";
 
@@ -227,21 +227,30 @@ function parseCSV(text) {
   return rows.filter(r => r.some(v => v.trim() !== ""));
 }
 
-// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점, 이미지, 시간(분), 보드라이프번호
+// 보드라이프 난이도(5점 만점) → 필터용 3단계
+const diffBucket = v => v < 2 ? 1 : v < 3 ? 2 : 3;
+// 정렬용 숫자: 보드라이프 난이도가 있으면 그 값, 없으면 3단계 값을 대략 환산
+const diffValue = x => x.blDiff ?? (x.diff ? x.diff + 0.5 : null);
+
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도(1~3), 위치, 평점, 이미지, 시간(분), 보드라이프번호, 보드라이프난이도
 function toGames(rows) {
-  return rows.slice(1).map(r => ({
+  return rows.slice(1).map(r => {
+    const blDiff = parseFloat(r[11]) || null;
+    return {
     name: (r[0] || "").trim(),
     genre: (r[1] || "").trim(),
     sub: (r[2] || "").trim(),
     min: parseInt(r[3], 10) || 1,
     max: parseInt(r[4], 10) || parseInt(r[3], 10) || 99,
-    diff: parseInt(r[5], 10) || 0,
+    diff: blDiff ? diffBucket(blDiff) : (parseInt(r[5], 10) || 0),
+    blDiff,
     loc: (r[6] || "").trim(),
     rating: parseFloat(r[7]) || null,
     img: (r[8] || "").trim(),
     time: parseInt(r[9], 10) || null,
     blId: (r[10] || "").trim(),
-  })).filter(g => g.name);
+    };
+  }).filter(g => g.name);
 }
 
 const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
@@ -331,7 +340,8 @@ function renderList() {
     const el = document.createElement("div");
     el.className = "game";
     const parts = [x.genre, x.sub].filter(Boolean).join(" · ");
-    const facts = [parts, playersText(x), x.time ? "⏱ " + timeText(x.time) : "", "★".repeat(x.diff)].filter(Boolean);
+    const diffText = x.blDiff ? `난이도 ${x.blDiff.toFixed(2)}` : "★".repeat(x.diff);
+    const facts = [parts, playersText(x), x.time ? "⏱ " + timeText(x.time) : "", diffText].filter(Boolean);
     el.innerHTML = `
       <div class="thumb">🎲</div>
       <div class="info">
@@ -417,7 +427,7 @@ function openSheet(x) {
     ["장르", [x.genre, x.sub].filter(Boolean).join(" · ")],
     ["인원", playersText(x)],
     ["시간", timeText(x.time)],
-    ["난이도", x.diff ? DIFF_LABEL[x.diff] : ""],
+    ["난이도", x.blDiff ? `${x.blDiff.toFixed(2)} / 5 (보드라이프)` : x.diff ? DIFF_LABEL[x.diff] : ""],
   ].filter(r => r[1]);
   const dl = sheet.querySelector("dl");
   rows.forEach(([k, v]) => {

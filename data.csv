@@ -1,15 +1,15 @@
-이름,장르,세부장르,최소인원,최대인원,난이도,위치,평점,이미지,시간,보드라이프번호
-스플렌더,전략,엔진빌딩,2,4,2,거실 B2,7.4,https://img.boardlife.co.kr/wys2/swf_upload/2023/11/19/1700324061316293_lg_w300.jpg,30,3516
-아그리콜라,전략,일꾼놓기,1,4,3,안방 A1,7.9,https://img.boardlife.co.kr/data/boardgame_strategy/2021/12/24/1640329018-317029_w300.jpg,120,561
-카탄,전략,협상,3,4,2,안방 C2,7.1,https://img.boardlife.co.kr/data/boardgame_strategy/2021/02/03/1612346505-465859_w300.jpg,90,274
-도미니언,전략,덱빌딩,2,4,2,안방 E3,7.6,https://img.boardlife.co.kr/wys2/swf_upload/2024/02/06/1707147614478933_lg_w300.jpg,30,591
-테라포밍 마스,전략,엔진빌딩,1,5,3,안방 A2,8.3,https://img.boardlife.co.kr/data/boardgame_strategy/2021/01/29/1611915054-873621_w300.jpg,120,6501
-티켓 투 라이드,전략,경로만들기,2,5,1,거실 F4,7.4,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/12/1641924483868554_lg_w300.jpg,60,12
-코드네임,파티,단어추리,4,8,1,거실 A1,7.5,https://img.boardlife.co.kr/data/photo/2026/05/12/1778571985-527361_w300.jpg,15,5516
-딕싯,파티,연상,3,6,1,거실 C1,7.3,https://img.boardlife.co.kr/data/boardgame_strategy/2021/02/08/1612776654-58068_w300.jpg,30,14
-할리갈리,파티,순발력,2,6,1,거실 D3,6.5,https://img.boardlife.co.kr/wys2/swf_upload/2022/02/20/1645350272987784_lg_w300.jpg,15,2145
-쿠,파티,블러핑,2,6,1,거실 G2,7.0,https://img.boardlife.co.kr/data/photo/2024/03/09/1709917900-215952_w300.jpg,15,3051
-팬데믹,협력,협력전략,2,4,2,작은방 B2,7.5,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/29/16434381802314_lg_w300.jpg,45,84
-스페이스 크루,협력,트릭테이킹,2,5,2,작은방 D1,7.8,https://img.boardlife.co.kr/data/boardgame_strategy_reg/2020/09/28/1601282966-492612_w300.jpg,20,13426
-클루,추리,추리,3,6,1,작은방 A4,5.7,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/28/1643356196671864_lg_w300.jpg,45,1727
-마피아 데 쿠바,추리,블러핑,6,12,1,작은방 F3,6.9,https://img.boardlife.co.kr/wys2/swf_upload/2022/02/09/1644410118133789_lg_w300.jpg,20,5286
+이름,장르,세부장르,최소인원,최대인원,난이도,위치,평점,이미지,시간,보드라이프번호,보드라이프난이도
+스플렌더,전략,엔진빌딩,2,4,1,거실 B2,7.4,https://img.boardlife.co.kr/wys2/swf_upload/2023/11/19/1700324061316293_lg_w300.jpg,30,3516,1.78
+아그리콜라,전략,일꾼놓기,1,5,3,안방 A1,7.9,https://img.boardlife.co.kr/data/boardgame_strategy/2021/12/24/1640329018-317029_w300.jpg,150,561,3.63
+카탄,전략,협상,3,4,2,안방 C2,7.1,https://img.boardlife.co.kr/data/boardgame_strategy/2021/02/03/1612346505-465859_w300.jpg,120,274,2.29
+도미니언,전략,덱빌딩,2,4,2,안방 E3,7.6,https://img.boardlife.co.kr/wys2/swf_upload/2024/02/06/1707147614478933_lg_w300.jpg,30,591,2.35
+테라포밍 마스,전략,엔진빌딩,1,5,3,안방 A2,8.3,https://img.boardlife.co.kr/data/boardgame_strategy/2021/01/29/1611915054-873621_w300.jpg,120,6501,3.27
+티켓 투 라이드,전략,경로만들기,2,5,1,거실 F4,7.4,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/12/1641924483868554_lg_w300.jpg,60,12,1.82
+코드네임,파티,단어추리,2,8,1,거실 A1,7.5,https://img.boardlife.co.kr/data/photo/2026/05/12/1778571985-527361_w300.jpg,15,5516,1.26
+딕싯,파티,연상,3,8,1,거실 C1,7.3,https://img.boardlife.co.kr/data/boardgame_strategy/2021/02/08/1612776654-58068_w300.jpg,30,14,1.19
+할리갈리,파티,순발력,2,6,1,거실 D3,6.5,https://img.boardlife.co.kr/wys2/swf_upload/2022/02/20/1645350272987784_lg_w300.jpg,10,2145,1.02
+쿠,파티,블러핑,2,6,1,거실 G2,7.0,https://img.boardlife.co.kr/data/photo/2024/03/09/1709917900-215952_w300.jpg,15,3051,1.41
+팬데믹,협력,협력전략,2,4,2,작은방 B2,7.5,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/29/16434381802314_lg_w300.jpg,45,84,2.40
+스페이스 크루,협력,트릭테이킹,2,5,1,작은방 D1,7.8,https://img.boardlife.co.kr/data/boardgame_strategy_reg/2020/09/28/1601282966-492612_w300.jpg,20,13426,1.96
+클루,추리,추리,2,6,1,작은방 A4,5.7,https://img.boardlife.co.kr/wys2/swf_upload/2022/01/28/1643356196671864_lg_w300.jpg,45,1727,1.64
+마피아 데 쿠바,추리,블러핑,6,12,1,작은방 F3,6.9,https://img.boardlife.co.kr/wys2/swf_upload/2022/02/09/1644410118133789_lg_w300.jpg,20,5286,1.47
