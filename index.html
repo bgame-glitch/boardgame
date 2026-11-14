@@ -65,7 +65,9 @@
     background: var(--card); border: 1px solid var(--line); border-radius: 12px;
     padding: 12px 14px; margin-bottom: 8px;
   }
-  .name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+  .name { font-size: 16px; font-weight: 700; }
+  .rating { font-size: 14px; font-weight: 600; white-space: nowrap; }
   .meta { font-size: 13px; color: var(--muted); }
   .loc { margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--loc); }
   .empty, .msg { text-align: center; color: var(--muted); padding: 40px 0; }
@@ -114,7 +116,7 @@ function parseCSV(text) {
   return rows.filter(r => r.some(v => v.trim() !== ""));
 }
 
-// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치, 평점
 function toGames(rows) {
   return rows.slice(1).map(r => ({
     name: (r[0] || "").trim(),
@@ -124,6 +126,7 @@ function toGames(rows) {
     max: parseInt(r[4], 10) || parseInt(r[3], 10) || 99,
     diff: parseInt(r[5], 10) || 0,
     loc: (r[6] || "").trim(),
+    rating: parseFloat(r[7]) || null,
   })).filter(g => g.name);
 }
 
@@ -192,10 +195,11 @@ function renderList() {
     const players = x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`;
     const parts = [x.genre, x.sub].filter(Boolean).join(" · ");
     el.innerHTML = `
-      <div class="name"></div>
+      <div class="top"><div class="name"></div><div class="rating"></div></div>
       <div class="meta"></div>
       <div class="loc"></div>`;
     el.querySelector(".name").textContent = x.name;
+    el.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) : "";
     el.querySelector(".meta").textContent = `${parts}  |  ${players}  |  ${"★".repeat(x.diff) || "-"}`;
     el.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
     list.appendChild(el);
