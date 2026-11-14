@@ -80,6 +80,7 @@
   <div class="group"><div class="label">세부장르</div><div class="chips" id="f-sub"></div></div>
   <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
   <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
+  <div class="group"><div class="label">정렬</div><div class="chips" id="f-sort"></div></div>
 </header>
 <main>
   <div id="count"></div>
@@ -95,6 +96,15 @@ const DIFF_LABEL = { 1: "★ 쉬움", 2: "★★ 보통", 3: "★★★ 어려�
 
 let games = [];
 const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set() };
+
+const byName = (a, b) => a.name.localeCompare(b.name, "ko");
+const SORTS = {
+  name:     { label: "이름순",       fn: byName },
+  rating:   { label: "평점 높은순",   fn: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byName(a, b) },
+  diffAsc:  { label: "쉬운 순",       fn: (a, b) => (a.diff || 99) - (b.diff || 99) || byName(a, b) },
+  diffDesc: { label: "어려운 순",     fn: (a, b) => (b.diff || 0) - (a.diff || 0) || byName(a, b) },
+};
+let sortKey = "name";
 
 // 따옴표·쉼표를 처리하는 간단한 CSV 파서
 function parseCSV(text) {
@@ -166,6 +176,10 @@ function renderFilters() {
   const d = document.getElementById("f-diff"); d.innerHTML = "";
   [1, 2, 3].forEach(n =>
     d.appendChild(chip(DIFF_LABEL[n], sel.diff.has(n), () => { toggle(sel.diff, n); update(); })));
+
+  const so = document.getElementById("f-sort"); so.innerHTML = "";
+  Object.entries(SORTS).forEach(([k, v]) =>
+    so.appendChild(chip(v.label, sortKey === k, () => { sortKey = k; update(); })));
 }
 
 function subOptions() {
@@ -185,7 +199,7 @@ function matches(x) {
 
 function renderList() {
   const list = document.getElementById("list");
-  const res = games.filter(matches).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  const res = games.filter(matches).sort(SORTS[sortKey].fn);
   document.getElementById("count").textContent = `게임 ${res.length}개`;
   if (!res.length) { list.innerHTML = '<div class="empty">조건에 맞는 게임이 없어요</div>'; return; }
   list.innerHTML = "";
@@ -209,7 +223,7 @@ function renderList() {
 function update() { renderFilters(); renderList(); }
 
 document.getElementById("reset").onclick = () => {
-  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.players = null; update();
+  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.players = null; sortKey = "name"; update();
 };
 
 fetch(SHEET_CSV_URL || "data.csv", { cache: "no-store" })
