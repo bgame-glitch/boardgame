@@ -47,13 +47,29 @@
     font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     -webkit-tap-highlight-color: transparent;
   }
-  header {
+  header { padding: 14px 16px 0; }
+  /* 스크롤해도 위에 남는 얇은 줄: 검색창 + 필터 버튼 */
+  .bar {
     position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 8px; align-items: center;
     background: var(--bg);
-    padding: 14px 16px 8px;
-    border-bottom: 1px solid var(--line);
+    padding: 8px 16px;
   }
-  .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  .bar.stuck { border-bottom: 1px solid var(--line); box-shadow: 0 2px 6px rgba(0,0,0,.06); }
+  #ftoggle {
+    flex: 0 0 auto; font-size: 14px; font-weight: 600; cursor: pointer;
+    padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+  }
+  #ftoggle .badge {
+    display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px;
+    border-radius: 999px; font-size: 12px; line-height: 18px; text-align: center;
+    background: var(--accent); color: var(--accent-text);
+  }
+  #ftoggle .badge:empty { display: none; }
+  #filters { padding: 4px 16px 8px; border-bottom: 1px solid var(--line); }
+  #filters[hidden] { display: none; }
+  .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
   .brand img { width: 52px; height: 52px; flex: 0 0 52px; }
   .brand h1 { flex: 1; margin: 0; font-family: "Jua", sans-serif; font-weight: 400; line-height: 1.1; }
   .brand .sub { display: block; font-size: 14px; color: var(--accent); letter-spacing: .5px; }
@@ -64,7 +80,7 @@
     color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
   }
   #search {
-    width: 100%; font-size: 16px; padding: 9px 12px; margin-bottom: 10px;
+    flex: 1; min-width: 0; font-size: 16px; padding: 9px 12px;
     border: 1px solid var(--line); border-radius: 10px;
     background: var(--card); color: var(--text);
   }
@@ -158,14 +174,19 @@
     <h1><span class="sub">현풍 테크노폴리스</span><span class="main"><span>보드게임</span> 찾기</span></h1>
     <button id="reset">초기화</button>
   </div>
+</header>
+<div class="bar" id="bar">
   <input id="search" type="search" placeholder="게임 이름 검색" autocomplete="off">
+  <button id="ftoggle" aria-controls="filters" aria-expanded="true">필터 <span id="fcount">▲</span><span class="badge" id="fbadge"></span></button>
+</div>
+<section id="filters">
   <div class="group"><div class="label">장르</div><div class="chips" id="f-genre"></div></div>
   <div class="group"><div class="label">세부장르</div><div class="chips" id="f-sub"></div></div>
   <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
   <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
   <div class="group"><div class="label">플레이 시간</div><div class="chips" id="f-time"></div></div>
   <div class="group"><div class="label">정렬</div><div class="chips" id="f-sort"></div></div>
-</header>
+</section>
 <main>
   <div id="count"></div>
   <div id="list"><div class="msg">불러오는 중…</div></div>
@@ -463,7 +484,42 @@ sheetBg.addEventListener("click", e => { if (e.target === sheetBg) closeSheet();
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
 // ---------- 시작 ----------
-function update() { renderFilters(); renderList(); }
+function update() { renderFilters(); renderList(); updateBadge(); }
+
+// ---------- 필터 열기/접기 ----------
+const filtersEl = document.getElementById("filters");
+const toggleBtn = document.getElementById("ftoggle");
+const barEl = document.getElementById("bar");
+
+function updateBadge() {
+  const n = sel.genre.size + sel.sub.size + (sel.players !== null ? 1 : 0) + sel.diff.size + sel.time.size;
+  document.getElementById("fbadge").textContent = n ? n : "";
+}
+
+function setFiltersOpen(open) {
+  filtersEl.hidden = !open;
+  toggleBtn.setAttribute("aria-expanded", open);
+  document.getElementById("fcount").textContent = open ? "▲" : "▼";
+}
+
+toggleBtn.onclick = () => {
+  const offScreen = filtersEl.getBoundingClientRect().bottom < barEl.offsetHeight;
+  if (filtersEl.hidden) {
+    // 접혀 있으면 펼치고 맨 위로
+    setFiltersOpen(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else if (offScreen) {
+    // 펼쳐져 있지만 스크롤해서 안 보이면 맨 위로만
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } else {
+    setFiltersOpen(false);
+  }
+};
+
+// 검색 줄이 화면 위에 붙었을 때만 그림자
+window.addEventListener("scroll", () => {
+  barEl.classList.toggle("stuck", barEl.getBoundingClientRect().top <= 0 && window.scrollY > 0);
+}, { passive: true });
 
 document.getElementById("search").addEventListener("input", e => {
   query = norm(e.target.value); renderList();
