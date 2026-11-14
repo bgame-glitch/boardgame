@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2f5d50">
+<title>보드게임 찾기</title>
+<style>
+  :root {
+    --bg: #f6f4ef;
+    --card: #ffffff;
+    --text: #222;
+    --muted: #777;
+    --line: #e3dfd6;
+    --accent: #2f5d50;
+    --accent-text: #fff;
+    --loc: #b5532f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1d1c;
+      --card: #262928;
+      --text: #eee;
+      --muted: #9a9a9a;
+      --line: #3a3d3c;
+      --accent: #6fb39d;
+      --accent-text: #10201b;
+      --loc: #f0a07d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--bg);
+    padding: 14px 16px 8px;
+    border-bottom: 1px solid var(--line);
+  }
+  h1 { font-size: 20px; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  #reset {
+    font-size: 13px; background: none; border: 1px solid var(--line);
+    color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
+  }
+  .group { margin-bottom: 8px; }
+  .label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip {
+    flex: 0 0 auto;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 7px 13px; font-size: 14px; cursor: pointer;
+  }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  main { padding: 12px 16px 40px; }
+  #count { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  .game {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .meta { font-size: 13px; color: var(--muted); }
+  .loc { margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--loc); }
+  .empty, .msg { text-align: center; color: var(--muted); padding: 40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎲 보드게임 찾기 <button id="reset">초기화</button></h1>
+  <div class="group"><div class="label">장르</div><div class="chips" id="f-genre"></div></div>
+  <div class="group"><div class="label">세부장르</div><div class="chips" id="f-sub"></div></div>
+  <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
+  <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
+</header>
+<main>
+  <div id="count"></div>
+  <div id="list"><div class="msg">불러오는 중…</div></div>
+</main>
+
+<script>
+// ▼ 구글 시트를 "웹에 게시(CSV)" 한 주소를 여기에 붙여넣으세요. 비워두면 data.csv 파일을 읽습니다.
+const SHEET_CSV_URL = "";
+
+const PLAYER_OPTIONS = [2, 3, 4, 5, 6]; // 6 = 6명 이상
+const DIFF_LABEL = { 1: "★ 쉬움", 2: "★★ 보통", 3: "★★★ 어려움" };
+
+let games = [];
+const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set() };
+
+// 따옴표·쉼표를 처리하는 간단한 CSV 파서
+function parseCSV(text) {
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"' && text[i + 1] === '"') { cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cur); cur = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cur); rows.push(row); row = []; cur = "";
+    } else cur += c;
+  }
+  if (cur || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(v => v.trim() !== ""));
+}
+
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도, 위치
+function toGames(rows) {
+  return rows.slice(1).map(r => ({
+    name: (r[0] || "").trim(),
+    genre: (r[1] || "").trim(),
+    sub: (r[2] || "").trim(),
+    min: parseInt(r[3], 10) || 1,
+    max: parseInt(r[4], 10) || parseInt(r[3], 10) || 99,
+    diff: parseInt(r[5], 10) || 0,
+    loc: (r[6] || "").trim(),
+  })).filter(g => g.name);
+}
+
+const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+
+function chip(label, on, onClick) {
+  const b = document.createElement("button");
+  b.className = "chip" + (on ? " on" : "");
+  b.textContent = label;
+  b.onclick = onClick;
+  return b;
+}
+
+function toggle(set, v) { set.has(v) ? set.delete(v) : set.add(v); }
+
+function renderFilters() {
+  const g = document.getElementById("f-genre"); g.innerHTML = "";
+  uniq(games.map(x => x.genre)).forEach(v =>
+    g.appendChild(chip(v, sel.genre.has(v), () => {
+      toggle(sel.genre, v);
+      // 선택 해제된 장르의 세부장르는 같이 해제
+      const valid = new Set(subOptions());
+      [...sel.sub].forEach(s => { if (!valid.has(s)) sel.sub.delete(s); });
+      update();
+    })));
+
+  const s = document.getElementById("f-sub"); s.innerHTML = "";
+  subOptions().forEach(v =>
+    s.appendChild(chip(v, sel.sub.has(v), () => { toggle(sel.sub, v); update(); })));
+
+  const p = document.getElementById("f-players"); p.innerHTML = "";
+  PLAYER_OPTIONS.forEach(n =>
+    p.appendChild(chip(n === 6 ? "6명+" : n + "명", sel.players === n, () => {
+      sel.players = sel.players === n ? null : n; update();
+    })));
+
+  const d = document.getElementById("f-diff"); d.innerHTML = "";
+  [1, 2, 3].forEach(n =>
+    d.appendChild(chip(DIFF_LABEL[n], sel.diff.has(n), () => { toggle(sel.diff, n); update(); })));
+}
+
+function subOptions() {
+  const src = sel.genre.size ? games.filter(x => sel.genre.has(x.genre)) : games;
+  return uniq(src.map(x => x.sub));
+}
+
+function matches(x) {
+  if (sel.genre.size && !sel.genre.has(x.genre)) return false;
+  if (sel.sub.size && !sel.sub.has(x.sub)) return false;
+  if (sel.players !== null) {
+    if (sel.players === 6 ? x.max < 6 : (x.min > sel.players || x.max < sel.players)) return false;
+  }
+  if (sel.diff.size && !sel.diff.has(x.diff)) return false;
+  return true;
+}
+
+function renderList() {
+  const list = document.getElementById("list");
+  const res = games.filter(matches).sort((a, b) => a.name.localeCompare(b.name, "ko"));
+  document.getElementById("count").textContent = `게임 ${res.length}개`;
+  if (!res.length) { list.innerHTML = '<div class="empty">조건에 맞는 게임이 없어요</div>'; return; }
+  list.innerHTML = "";
+  res.forEach(x => {
+    const el = document.createElement("div");
+    el.className = "game";
+    const players = x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`;
+    const parts = [x.genre, x.sub].filter(Boolean).join(" · ");
+    el.innerHTML = `
+      <div class="name"></div>
+      <div class="meta"></div>
+      <div class="loc"></div>`;
+    el.querySelector(".name").textContent = x.name;
+    el.querySelector(".meta").textContent = `${parts}  |  ${players}  |  ${"★".repeat(x.diff) || "-"}`;
+    el.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
+    list.appendChild(el);
+  });
+}
+
+function update() { renderFilters(); renderList(); }
+
+document.getElementById("reset").onclick = () => {
+  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.players = null; update();
+};
+
+fetch(SHEET_CSV_URL || "data.csv", { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.text(); })
+  .then(t => { games = toGames(parseCSV(t)); update(); })
+  .catch(() => {
+    document.getElementById("list").innerHTML =
+      '<div class="msg">게임 목록을 불러오지 못했어요.<br>인터넷 연결이나 시트 주소를 확인해 주세요.</div>';
+  });
+</script>
+</body>
+</html>
