@@ -126,6 +126,23 @@
   #sheet dt { color: var(--muted); }
   #sheet dd { margin: 0; }
   #sheet .loc { font-size: 17px; text-align: center; margin: 0 0 16px; }
+  .shelf { margin: -6px auto 16px; width: fit-content; }
+  .shelf-title { text-align: center; font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .shelf-grid {
+    display: grid; gap: 3px;
+    padding: 6px; border-radius: 8px;
+    background: #8a5a2b; /* 나무 책장 느낌 */
+  }
+  .shelf-grid .h { font-size: 11px; color: #f5e6cf; text-align: center; line-height: 16px; }
+  .shelf-grid .cell {
+    width: 30px; height: 24px; border-radius: 3px; background: #f3e7d3;
+  }
+  .shelf-grid .cell.here {
+    background: var(--loc); box-shadow: 0 0 0 2px #fff inset;
+    animation: blink 1s ease-in-out 3;
+  }
+  @keyframes blink { 50% { opacity: .35; } }
+  @media (prefers-reduced-motion: reduce) { .shelf-grid .cell.here { animation: none; } }
   .btn {
     display: block; text-align: center; text-decoration: none;
     padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600; margin-bottom: 8px;
@@ -159,6 +176,14 @@
 <script>
 // ▼ 구글 시트를 "웹에 게시(CSV)" 한 주소를 여기에 붙여넣으세요. 비워두면 data.csv 파일을 읽습니다.
 const SHEET_CSV_URL = "";
+
+// ▼ 책장 크기 (가로 열 수 × 세로 단 수). 위치는 "거실 C2"처럼 적어요: 방 이름 + 열(알파벳) + 단(위에서부터 1).
+// ※ 임시로 모두 7×4. 실제 책장 사진을 보고 고칠 예정.
+const SHELVES = {
+  "거실":   { cols: 7, rows: 4 },
+  "안방":   { cols: 7, rows: 4 },
+  "작은방": { cols: 7, rows: 4 },
+};
 
 const PLAYER_OPTIONS = [2, 3, 4, 5, 6]; // 6 = 6명 이상
 const DIFF_LABEL = { 1: "★ 쉬움", 2: "★★ 보통", 3: "★★★ 어려움" };
@@ -324,6 +349,49 @@ function renderList() {
   });
 }
 
+// ---------- 책장 지도 ----------
+// "거실 C2" → { room: "거실", col: 2(0부터), row: 1(0부터) }. 형식이 다르면 null.
+function parseLoc(loc) {
+  const m = (loc || "").trim().match(/^(.+?)\s*([A-Za-z])\s*-?\s*(\d+)\s*(단|층)?$/);
+  if (!m) return null;
+  const room = m[1].trim();
+  const shelf = SHELVES[room];
+  if (!shelf) return null;
+  const col = m[2].toUpperCase().charCodeAt(0) - 65;
+  const row = parseInt(m[3], 10) - 1;
+  if (col < 0 || col >= shelf.cols || row < 0 || row >= shelf.rows) return null;
+  return { room, col, row, shelf };
+}
+
+function shelfMap(loc) {
+  const p = parseLoc(loc);
+  if (!p) return null;
+  const wrap = document.createElement("div");
+  wrap.className = "shelf";
+  const title = document.createElement("div");
+  title.className = "shelf-title";
+  title.textContent = `${p.room} 책장`;
+  const grid = document.createElement("div");
+  grid.className = "shelf-grid";
+  grid.style.gridTemplateColumns = `16px repeat(${p.shelf.cols}, 30px)`;
+  grid.appendChild(document.createElement("div")); // 왼쪽 위 빈칸
+  for (let c = 0; c < p.shelf.cols; c++) {
+    const h = document.createElement("div"); h.className = "h"; h.textContent = String.fromCharCode(65 + c);
+    grid.appendChild(h);
+  }
+  for (let r = 0; r < p.shelf.rows; r++) {
+    const h = document.createElement("div"); h.className = "h"; h.textContent = r + 1;
+    grid.appendChild(h);
+    for (let c = 0; c < p.shelf.cols; c++) {
+      const cell = document.createElement("div");
+      cell.className = "cell" + (r === p.row && c === p.col ? " here" : "");
+      grid.appendChild(cell);
+    }
+  }
+  wrap.append(title, grid);
+  return wrap;
+}
+
 // ---------- 상세 보기 ----------
 const sheetBg = document.getElementById("sheet-bg");
 const sheet = document.getElementById("sheet");
@@ -335,8 +403,11 @@ function openSheet(x) {
     <h2></h2>
     <div class="rating"></div>
     <div class="loc"></div>
+    <div class="shelf-slot"></div>
     <dl></dl>
     <div class="links"></div>`;
+  const map = shelfMap(x.loc);
+  if (map) sheet.querySelector(".shelf-slot").appendChild(map);
   setImage(sheet.querySelector(".big"), x.img);
   sheet.querySelector("h2").textContent = x.name;
   sheet.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) + " (BGG)" : "";
