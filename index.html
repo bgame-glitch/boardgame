@@ -6,7 +6,14 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2f5d50">
-<title>보드게임 찾기</title>
+<title>현풍 테크노폴리스 보드게임</title>
+<meta name="apple-mobile-web-app-title" content="현풍보드게임">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
 <style>
   :root {
     --bg: #f6f4ef;
@@ -46,7 +53,12 @@
     padding: 14px 16px 8px;
     border-bottom: 1px solid var(--line);
   }
-  h1 { font-size: 20px; margin: 0 0 10px; display: flex; justify-content: space-between; align-items: center; }
+  .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 10px; }
+  .brand img { width: 52px; height: 52px; flex: 0 0 52px; }
+  .brand h1 { flex: 1; margin: 0; font-family: "Jua", sans-serif; font-weight: 400; line-height: 1.1; }
+  .brand .sub { display: block; font-size: 14px; color: var(--accent); letter-spacing: .5px; }
+  .brand .main { display: block; font-size: 26px; color: var(--text); }
+  .brand .main span { color: #f2b705; -webkit-text-stroke: .6px #7a4a1c; }
   #reset {
     font-size: 13px; background: none; border: 1px solid var(--line);
     color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
@@ -124,7 +136,11 @@
 </head>
 <body>
 <header>
-  <h1>🎲 보드게임 찾기 <button id="reset">초기화</button></h1>
+  <div class="brand">
+    <img src="img/logo.png" alt="">
+    <h1><span class="sub">현풍 테크노폴리스</span><span class="main"><span>보드게임</span> 찾기</span></h1>
+    <button id="reset">초기화</button>
+  </div>
   <input id="search" type="search" placeholder="게임 이름 검색" autocomplete="off">
   <div class="group"><div class="label">장르</div><div class="chips" id="f-genre"></div></div>
   <div class="group"><div class="label">세부장르</div><div class="chips" id="f-sub"></div></div>
