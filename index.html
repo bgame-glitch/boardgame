@@ -153,6 +153,15 @@
   .shelf-grid .cell {
     width: 30px; height: 24px; border-radius: 3px; background: #f3e7d3;
   }
+  .shelf-top {
+    margin: 0 6px 3px 28px; height: 22px; border-radius: 4px;
+    border: 1.5px dashed #b88a5a; color: var(--muted);
+    font-size: 11px; line-height: 19px; text-align: center;
+  }
+  .shelf-top.here {
+    background: var(--loc); border: 2px solid var(--loc); color: #fff; font-weight: 700;
+    animation: blink 1s ease-in-out 3;
+  }
   .shelf-grid .cell.here {
     background: var(--loc); box-shadow: 0 0 0 2px #fff inset;
     animation: blink 1s ease-in-out 3;
@@ -382,9 +391,13 @@ function renderList() {
 }
 
 // ---------- 책장 지도 ----------
-// "거실 C2" → { room: "거실", col: 2(0부터), row: 1(0부터) }. 형식이 다르면 null.
+// "거실 C2" → { room: "거실", col: 2(0부터), row: 1(0부터) }
+// "거실 위" / "거실 책장 위" → { room: "거실", top: true }. 형식이 다르면 null.
 function parseLoc(loc) {
-  const m = (loc || "").trim().match(/^(.+?)\s*([A-Za-z])\s*-?\s*(\d+)\s*(단|층)?$/);
+  const s = (loc || "").trim();
+  const t = s.match(/^(.+?)\s*(책장\s*)?위$/);
+  if (t && SHELVES[t[1].trim()]) return { room: t[1].trim(), top: true, shelf: SHELVES[t[1].trim()] };
+  const m = s.match(/^(.+?)\s*([A-Za-z])\s*-?\s*(\d+)\s*(단|층)?$/);
   if (!m) return null;
   const room = m[1].trim();
   const shelf = SHELVES[room];
@@ -416,11 +429,15 @@ function shelfMap(loc) {
     grid.appendChild(h);
     for (let c = 0; c < p.shelf.cols; c++) {
       const cell = document.createElement("div");
-      cell.className = "cell" + (r === p.row && c === p.col ? " here" : "");
+      cell.className = "cell" + (!p.top && r === p.row && c === p.col ? " here" : "");
       grid.appendChild(cell);
     }
   }
-  wrap.append(title, grid);
+  // 책장 위 공간
+  const top = document.createElement("div");
+  top.className = "shelf-top" + (p.top ? " here" : "");
+  top.textContent = "책장 위";
+  wrap.append(title, top, grid);
   return wrap;
 }
 
