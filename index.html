@@ -460,7 +460,11 @@ function openSheet(x) {
   if (map) sheet.querySelector(".shelf-slot").appendChild(map);
   setImage(sheet.querySelector(".big"), x.img);
   sheet.querySelector("h2").textContent = x.name;
-  sheet.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) + " (보드라이프)" : "";
+  // 보드라이프번호 칸이 "mm254"처럼 mm으로 시작하면 머더미스터리 로그 작품(평점은 5점 만점을 10점으로 환산해 저장)
+  const mmId = (x.blId.match(/^mm(\d+)$/) || [])[1];
+  sheet.querySelector(".rating").textContent = !x.rating ? ""
+    : mmId ? `⭐ ${(x.rating / 2).toFixed(1)} / 5 (머더미스터리 로그)`
+    : "⭐ " + x.rating.toFixed(1) + " (보드라이프)";
   sheet.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
 
   const rows = [
@@ -488,6 +492,13 @@ function openSheet(x) {
     bl.href = "https://boardlife.co.kr/game/" + x.blId;
     bl.textContent = "보드라이프에서 보기";
     links.appendChild(bl);
+  }
+  if (mmId) {
+    const mm = document.createElement("a");
+    mm.className = "btn"; mm.target = "_blank"; mm.rel = "noopener";
+    mm.href = "https://murdermysterylog.com/detail/" + mmId;
+    mm.textContent = "머더미스터리 로그에서 보기";
+    links.appendChild(mm);
   }
 
   sheet.querySelector(".close").onclick = closeSheet;
