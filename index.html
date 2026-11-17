@@ -270,6 +270,7 @@ function toGames(rows) {
     name: (r[0] || "").trim(),
     genre: (r[1] || "").trim(),
     sub: (r[2] || "").trim(),
+    noPlayers: !parseInt(r[3], 10), // 인원 정보가 없는 게임(예: 보드라이프에 없는 게임)
     min: parseInt(r[3], 10) || 1,
     max: parseInt(r[4], 10) || parseInt(r[3], 10) || 99,
     diff: blDiff ? diffBucket(blDiff) : (parseInt(r[5], 10) || 0),
@@ -286,7 +287,7 @@ function toGames(rows) {
 
 const uniq = arr => [...new Set(arr.filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
 const norm = s => s.toLowerCase().replace(/\s+/g, "");
-const playersText = x => (x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`) + (x.best ? ` (베스트 ${x.best}인)` : "");
+const playersText = x => x.noPlayers ? "" : (x.min === x.max ? `${x.min}인` : `${x.min}~${x.max}인`) + (x.best ? ` (베스트 ${x.best}인)` : "");
 const timeText = t => !t ? "" : t >= 60 && t % 60 === 0 ? `${t / 60}시간` : t > 60 ? `${Math.floor(t / 60)}시간 ${t % 60}분` : `${t}분`;
 
 function chip(label, on, onClick) {
