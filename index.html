@@ -459,7 +459,7 @@ function openSheet(x) {
   if (map) sheet.querySelector(".shelf-slot").appendChild(map);
   setImage(sheet.querySelector(".big"), x.img);
   sheet.querySelector("h2").textContent = x.name;
-  sheet.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) + " (BGG)" : "";
+  sheet.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) + " (보드라이프)" : "";
   sheet.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
 
   const rows = [
@@ -490,14 +490,23 @@ function openSheet(x) {
   }
 
   sheet.querySelector(".close").onclick = closeSheet;
+  // 휴대폰 뒤로가기가 사이트를 닫지 않고 상세 보기만 닫도록 기록을 하나 쌓아 둔다
+  if (!sheetBg.classList.contains("open")) history.pushState({ sheet: true }, "");
   sheetBg.classList.add("open");
   document.body.style.overflow = "hidden";
 }
 
-function closeSheet() {
+function hideSheet() {
   sheetBg.classList.remove("open");
   document.body.style.overflow = "";
 }
+// ×·바깥 클릭·Esc로 닫을 때도 쌓아 둔 기록을 되돌려서, 다음 뒤로가기가 정상 동작하게 한다
+function closeSheet() {
+  if (!sheetBg.classList.contains("open")) return;
+  if (history.state && history.state.sheet) history.back(); // popstate에서 hideSheet 실행
+  else hideSheet();
+}
+window.addEventListener("popstate", hideSheet);
 sheetBg.addEventListener("click", e => { if (e.target === sheetBg) closeSheet(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") closeSheet(); });
 
