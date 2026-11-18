@@ -155,6 +155,15 @@
   .cal-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
   .cal-legend i.full { background: var(--full); }
   .day-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 18px 0 6px; }
+  /* 당근 없이 참석 */
+  .go.guest { background: var(--card); color: var(--accent); border: 1.5px solid var(--accent); cursor: pointer; width: 100%; font-family: inherit; }
+  .go.guest:disabled { color: var(--muted); border-color: var(--line); cursor: default; }
+  .guests { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; font-size: 12px; color: var(--muted); }
+  .gchip {
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); cursor: pointer;
+    border-radius: 999px; padding: 3px 9px; font-size: 13px; font-family: inherit;
+  }
+  .gchip b { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 2px; }
   /* ⋮ 메뉴 */
   .right { display: flex; align-items: center; gap: 4px; }
   .more {
@@ -284,6 +293,10 @@ const dayLabel = d => {
 const timeLabel = d => d.toLocaleTimeString("ko-KR", { ...KST, hour: "numeric", minute: "2-digit" });
 
 let all = [], onlyOpen = false;
+// 당근 인원 + 사이트 게스트가 정원에 차면 마감으로 봐요
+const guestsOf = m => m.guests || [];
+const totalOf = m => (m.current || 0) + guestsOf(m).length;
+const isFull = m => m.status !== "OPENED" || (m.max != null && totalOf(m) >= m.max);
 
 // 보기: 목록 / 달력 (이 휴대폰에 기억)
 let view = "list";
@@ -296,7 +309,7 @@ const keyOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).p
 const keyOfDate = date => { const k = kst(date); return keyOf(k.y, k.m, k.d); };
 
 function render() {
-  const items = all.filter(m => !onlyOpen || m.status === "OPENED");
+  const items = all.filter(m => !onlyOpen || !isFull(m));
   if (view === "cal") renderCal(items); else renderList(items);
 }
 
@@ -335,7 +348,7 @@ function renderCal(items) {
     const k = keyOf(calY, calM, d), ms = byDay.get(k) || [];
     const dow = (lead + d - 1) % 7;
     const cls = ["cal-day", dow === 0 ? "sun" : "", k === todayKey ? "today" : "", k < todayKey ? "past" : "", k === selDay ? "sel" : ""].filter(Boolean).join(" ");
-    const dots = ms.slice(0, 3).map(m => `<i class="${m.status === "OPENED" ? "" : "full"}"></i>`).join("") + (ms.length > 3 ? `<em>+</em>` : "");
+    const dots = ms.slice(0, 3).map(m => `<i class="${isFull(m) ? "full" : ""}"></i>`).join("") + (ms.length > 3 ? `<em>+</em>` : "");
     const label = `${calM + 1}월 ${d}일${ms.length ? `, 일정 ${ms.length}개` : ""}`;
     grid += `<button type="button" class="${cls}" data-day="${k}" aria-label="${label}" aria-pressed="${k === selDay}"><span class="n">${d}</span><span class="dots">${dots}</span></button>`;
   }
@@ -387,10 +400,18 @@ document.getElementById("list").addEventListener("click", e => {
 
 function card(m) {
     const d = new Date(m.meetAt);
-    const open = m.status === "OPENED";
+    const g = guestsOf(m), total = totalOf(m);
+    const open = !isFull(m);
     const statusTag = open ? `<span class="tag open">모집중</span>`
-      : m.status === "FULLY_RECRUITED" ? `<span class="tag full">마감</span>` : `<span class="tag full">종료</span>`;
-    const pct = m.max ? Math.min(100, Math.round(m.current / m.max * 100)) : 0;
+      : m.status === "CLOSED" ? `<span class="tag full">종료</span>` : `<span class="tag full">마감</span>`;
+    const pct = m.max ? Math.min(100, Math.round(total / m.max * 100)) : 0;
+    const people = m.max
+      ? `${g.length ? `당근 ${m.current || 0}명 + 게스트 ${g.length}명 = ` : ""}${total}/${m.max}명`
+      : g.length ? `게스트 ${g.length}명` : "";
+    const guestHtml = g.length ? `<div class="guests"><span>게스트</span>${g.map(n =>
+      `<button type="button" class="gchip" data-leave="${esc(m.id)}" data-name="${esc(n)}" aria-label="${esc(n)} 참석 취소">${esc(n)} <b>✕</b></button>`).join("")}</div>` : "";
+    const canGuest = CFG.liveUrl && m.status !== "CLOSED";
+    const guestBtn = canGuest ? `<button type="button" class="go guest" data-join="${esc(m.id)}" ${open ? "" : "disabled"}>${open ? "당근 없이 참석하기" : "자리가 다 찼어요"}</button>` : "";
     return `<article class="meet${open ? "" : " closed"}">
       <div class="thumb">${m.image ? `<img src="${esc(m.image)}" alt="" loading="lazy">` : "🎲"}</div>
       <div class="info">
@@ -399,8 +420,10 @@ function card(m) {
         ${m.place ? `<div class="place">📍 ${esc(m.place.name)}${m.place.address ? ` <small>${esc(m.place.address)}</small>` : ""}</div>` : ""}
         ${m.description ? `<div class="desc">${esc(m.description)}</div>` : ""}
         ${!m.place && m.current == null ? `<div class="people">장소·참석 인원은 당근에서 확인해 주세요</div>` : ""}
-        ${m.max ? `<div class="people"><span>${m.current}/${m.max}명</span><span class="bar"><i style="width:${pct}%"></i></span></div>` : ""}
+        ${m.max ? `<div class="people"><span>${people}</span><span class="bar"><i style="width:${pct}%"></i></span></div>` : people ? `<div class="people">${people}</div>` : ""}
+        ${guestHtml}
         <a class="go${open ? "" : " ghost"}" href="${esc(appLink(`/group/${GROUP_DB_ID}/meetups/${m.id}`))}">${open ? "당근에서 참석하기" : "당근에서 보기"}</a>
+        ${guestBtn}
       </div>
     </article>`;
 }
@@ -604,6 +627,55 @@ function deleteForm(m) {
     render(); closeModal(); toast("사이트에서 뺐어요");
   };
 }
+
+// ── 당근 없이 참석 / 취소 (닉네임만, 누구나) ───────────────────────────────
+const NICK_KEY = "meetupNick";
+const savedNick = () => { try { return localStorage.getItem(NICK_KEY) || ""; } catch { return ""; } };
+const putMeetup = m => { if (m) all = upcoming([...all.filter(x => x.id !== m.id), m]); render(); };
+
+document.addEventListener("click", e => {
+  const join = e.target.closest("[data-join]");
+  if (join && !join.disabled) {
+    const m = all.find(x => x.id === join.dataset.join); if (!m) return;
+    openModal(`<h2>당근 없이 참석하기</h2><p><b>${esc(m.name)}</b><br>${esc(dayLabel(new Date(m.meetAt)))} ${esc(timeLabel(new Date(m.meetAt)))}</p>
+      <label>닉네임<input id="m-nick" type="text" maxlength="20" autocomplete="nickname" value="${esc(savedNick())}" placeholder="모임에서 부를 이름"></label>
+      <div class="err" id="m-err"></div>
+      <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">참석</button></div>`);
+    $("m-nick").focus();
+    $("m-cancel").onclick = closeModal;
+    const go = async () => {
+      const name = $("m-nick").value.trim();
+      if (!name) { $("m-err").textContent = "닉네임을 입력해 주세요."; return; }
+      $("m-ok").disabled = true;
+      try {
+        const r = await post({ action: "join", id: m.id, name });
+        if (r.meetup) putMeetup(r.meetup);
+        if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+        try { localStorage.setItem(NICK_KEY, name); } catch {}
+        closeModal(); toast(`${name} 님 참석했어요`);
+      } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
+    };
+    $("m-ok").onclick = go;
+    $("m-nick").addEventListener("keydown", ev => { if (ev.key === "Enter") go(); });
+    return;
+  }
+  const leave = e.target.closest("[data-leave]");
+  if (leave) {
+    const m = all.find(x => x.id === leave.dataset.leave), name = leave.dataset.name; if (!m) return;
+    openModal(`<h2>참석 취소</h2><p><b>${esc(name)}</b> 님의 참석을 취소할까요?<br>${esc(m.name)}</p>
+      <div class="err" id="m-err"></div>
+      <div class="acts"><button type="button" id="m-cancel">닫기</button><button type="button" class="del" id="m-ok">참석 취소</button></div>`);
+    $("m-cancel").onclick = closeModal;
+    $("m-ok").onclick = async () => {
+      $("m-ok").disabled = true;
+      try {
+        const r = await post({ action: "leave", id: m.id, name });
+        if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+        putMeetup(r.meetup); closeModal(); toast("참석을 취소했어요");
+      } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
+    };
+  }
+});
 
 getJson("meetup-config.json").catch(() => ({})).then(cfg => { CFG = cfg; setupAdd(cfg); load(cfg); });
 </script>

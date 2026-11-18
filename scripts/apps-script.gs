@@ -6,6 +6,7 @@
  *
  *   주소?            → 다가오는 일정 목록 (모임 페이지 5개 + 시트에 붙여넣은 링크)
  *   주소?action=add&link=당근링크  → 링크를 시트에 저장하고 그 일정을 바로 돌려줘요
+ *   POST {action:"join"|"leave", id, name}           → 당근 없이 참석 / 취소 (누구나)
  *   POST {action:"check"|"edit"|"delete", pin, ...} → 모임장 전용 (비밀번호 필요)
  *
  * 모임장 비밀번호: 왼쪽 톱니바퀴(프로젝트 설정) → 스크립트 속성 → 속성 추가
@@ -30,6 +31,9 @@ function doGet(e) {
 function doPost(e) {
   try {
     const b = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+    // 당근 없이 참석 / 취소는 누구나 (비밀번호 없음)
+    if (b.action === "join") return json_(joinGuest_(String(b.id || ""), b.name));
+    if (b.action === "leave") return json_(leaveGuest_(String(b.id || ""), b.name));
     const props = PropertiesService.getScriptProperties();
     const pin = props.getProperty("ADMIN_PIN");
     if (!pin) return json_({ ok: false, error: "시트 스크립트에 ADMIN_PIN(모임장 비밀번호)을 먼저 정해 주세요." });
@@ -73,6 +77,57 @@ function doPost(e) {
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err) });
   }
+}
+
+// ── 당근 없이 참석하는 게스트 ("게스트" 탭: 시각 | 일정번호 | 닉네임) ─────────────
+function guestSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName("게스트");
+  if (!sh) { sh = ss.insertSheet("게스트"); sh.appendRow(["시각", "일정번호", "닉네임"]); }
+  return sh;
+}
+
+function guestsById_() {
+  const map = {};
+  guestSheet_().getDataRange().getDisplayValues().slice(1).forEach(r => {
+    const id = String(r[1]).trim(), name = String(r[2]).trim();
+    if (id && name) (map[id] = map[id] || []).push(name);
+  });
+  return map;
+}
+
+const cleanName_ = n => String(n || "").replace(/\s+/g, " ").trim().slice(0, 20);
+const isFull_ = m => m.status !== "OPENED" ||
+  (m.max != null && (m.current || 0) + (m.guests ? m.guests.length : 0) >= m.max);
+
+function freshMeetup_(id) {
+  CacheService.getScriptCache().remove("list");
+  return list_().meetups.find(m => m.id === id) || null;
+}
+
+function joinGuest_(id, rawName) {
+  const name = cleanName_(rawName);
+  if (!/^\d+$/.test(id)) return { ok: false, error: "일정 번호가 잘못됐어요." };
+  if (!name) return { ok: false, error: "닉네임을 입력해 주세요." };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000); // 동시에 눌러도 정원을 넘지 않게
+  try {
+    const m = freshMeetup_(id);
+    if (!m) return { ok: false, error: "이 일정을 찾을 수 없어요." };
+    if ((m.guests || []).indexOf(name) >= 0) return { ok: false, error: `"${name}" 님은 이미 참석했어요.` };
+    if (isFull_(m)) return { ok: false, error: "자리가 다 찼어요.", meetup: m };
+    guestSheet_().appendRow([new Date(), id, name]);
+    return { ok: true, meetup: freshMeetup_(id) };
+  } finally { lock.releaseLock(); }
+}
+
+function leaveGuest_(id, rawName) {
+  const name = cleanName_(rawName);
+  const sh = guestSheet_(), rows = sh.getDataRange().getDisplayValues();
+  for (let r = rows.length - 1; r >= 1; r--) {
+    if (String(rows[r][1]).trim() === id && String(rows[r][2]).trim() === name) { sh.deleteRow(r + 1); break; }
+  }
+  return { ok: true, meetup: freshMeetup_(id) };
 }
 
 // 모임장이 직접 고친 값(장소·인원·시간)을 덮어써요
@@ -204,9 +259,11 @@ function merge_(linkItems, groupItems) {
       prev && prev.link ? { link: prev.link } : {}));
   });
   const now = Date.now();
+  let guests = {};
+  try { guests = guestsById_(); } catch (e) {}
   return [...byId.values()]
     .filter(m => !props.getProperty("H:" + m.id))
-    .map(m => applyOverride_(m, props))
+    .map(m => Object.assign(applyOverride_(m, props), { guests: guests[m.id] || [] }))
     .filter(m => new Date(m.meetAt).getTime() + KEEP_AFTER_MS > now)
     .sort((a, b) => String(a.meetAt).localeCompare(String(b.meetAt)));
 }
