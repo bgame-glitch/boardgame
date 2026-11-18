@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2f5d50">
+<title>현풍 테크노폴리스 보드게임 · 모임 일정</title>
+<meta name="apple-mobile-web-app-title" content="현풍보드게임">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f6f4ef; --card: #ffffff; --text: #222; --muted: #777; --line: #e3dfd6;
+    --accent: #2f5d50; --accent-text: #fff; --loc: #b5532f;
+    --karrot: #ff6f0f; --karrot-text: #fff; --full: #9a948a; --member: #5b5bd6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1b1d1c; --card: #262928; --text: #eee; --muted: #9a9a9a; --line: #3a3d3c;
+      --accent: #6fb39d; --accent-text: #10201b; --loc: #f0a07d;
+      --karrot: #ff8a3d; --karrot-text: #1b1d1c; --full: #8a857d; --member: #9b9bff;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  header { padding: 14px 16px 0; }
+  .brand { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+  .brand img { width: 52px; height: 52px; flex: 0 0 52px; }
+  .brand h1 { flex: 1; margin: 0; font-family: "Jua", sans-serif; font-weight: 400; line-height: 1.1; }
+  .brand .sub { display: block; font-size: 14px; color: var(--accent); letter-spacing: .5px; }
+  .brand .main { display: block; font-size: 26px; color: var(--text); }
+  .brand .main span { color: #f2b705; -webkit-text-stroke: .6px #7a4a1c; }
+  /* 게임 찾기 / 모임 일정 탭 (index.html 과 같은 모양) */
+  .tabs { display: flex; gap: 6px; padding: 8px 16px 4px; }
+  .tabs a {
+    flex: 1; text-align: center; text-decoration: none; padding: 9px 0; border-radius: 10px;
+    font-size: 15px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line);
+  }
+  .tabs a.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  main { padding: 8px 16px 40px; max-width: 640px; margin: 0 auto; }
+  .tools { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip {
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    border-radius: 999px; padding: 7px 13px; font-size: 14px; cursor: pointer;
+  }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 600; }
+  .new {
+    margin-left: auto; text-decoration: none; font-size: 14px; font-weight: 700;
+    padding: 8px 12px; border-radius: 10px; background: var(--karrot); color: var(--karrot-text);
+  }
+  #updated { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+  .day { font-size: 13px; font-weight: 700; color: var(--accent); margin: 16px 0 6px; }
+  .day:first-of-type { margin-top: 4px; }
+  .meet {
+    display: flex; gap: 12px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .meet.closed { opacity: .6; }
+  .thumb {
+    flex: 0 0 64px; width: 64px; height: 64px; border-radius: 8px; overflow: hidden;
+    background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 28px;
+  }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .info { flex: 1; min-width: 0; display: grid; gap: 5px; }
+  .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .time { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .name { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+  .place { font-size: 14px; font-weight: 600; color: var(--loc); }
+  .place small { font-weight: 400; color: var(--muted); }
+  .people { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--accent); }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+  .tag.open { color: var(--accent); } .tag.full { color: var(--full); } .tag.member { color: var(--member); }
+  .go {
+    display: block; text-align: center; text-decoration: none; margin-top: 4px;
+    padding: 10px; border-radius: 10px; font-size: 15px; font-weight: 700;
+    background: var(--karrot); color: var(--karrot-text);
+  }
+  .go.ghost { background: var(--bg); color: var(--text); border: 1px solid var(--line); }
+  .all {
+    display: block; text-align: center; text-decoration: none; margin-top: 16px;
+    padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 600;
+    border: 1px solid var(--line); color: var(--text); background: var(--card);
+  }
+  .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; line-height: 1.5; }
+  .msg { text-align: center; color: var(--muted); padding: 40px 0; }
+  a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <img src="img/logo.png" alt="">
+    <h1><span class="sub">현풍 테크노폴리스</span><span class="main"><span>보드게임</span> 모임 일정</span></h1>
+  </div>
+</header>
+<nav class="tabs">
+  <a href="./">게임 찾기</a>
+  <a href="schedule.html" class="on" aria-current="page">모임 일정</a>
+</nav>
+<main>
+  <div class="tools">
+    <button class="chip on" id="f-all" type="button">전체</button>
+    <button class="chip" id="f-open" type="button">모집중만</button>
+    <a class="new" id="new">＋ 당근에서 일정 만들기</a>
+  </div>
+  <div id="updated"></div>
+  <div id="list"><div class="msg">불러오는 중…</div></div>
+  <a class="all" id="all">당근에서 전체 일정 보기</a>
+  <p class="note">일정은 당근 모임에서 2일마다 자동으로 가져와요.<br>참석 인원은 당근 앱에서 보는 게 가장 정확해요.</p>
+</main>
+
+<script>
+const GROUP_DB_ID = "412730";
+const GROUP_WEB = "https://www.daangn.com/kr/group/xgfk9uzqfji2/";
+
+// 당근 공식 웹과 같은 방식으로 앱을 열어요: 안드로이드는 intent://, 아이폰 등은 당근 onelink
+const isAndroid = /Android/i.test(navigator.userAgent);
+const scheme = path => "karrot://minikarrot/router?navbar=false&scrollable=false&remote=" +
+  encodeURIComponent("https://community-web-group.kr.karrotmarket.com" + path);
+const oneLink = s => {
+  const p = new URLSearchParams();
+  p.set("af_dp", s); p.set("deep_link_value", s); p.set("af_force_deeplink", "true");
+  p.set("is_retargeting", "true"); p.set("af_reengagement_window", "30d"); p.set("pid", "web_kr");
+  return "https://daangn.onelink.me/oWdR?" + p.toString();
+};
+const appLink = path => {
+  const s = scheme(path);
+  return isAndroid
+    ? "intent://" + s.slice(s.indexOf("://") + 3) + "#Intent;scheme=karrot;package=com.towneers.www;S.browser_fallback_url=" + encodeURIComponent(oneLink(s)) + ";end"
+    : oneLink(s);
+};
+
+document.getElementById("new").href = appLink(`/group/${GROUP_DB_ID}/meetups/new`);
+document.getElementById("all").href = appLink(`/group/${GROUP_DB_ID}/meetups`);
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const KST = { timeZone: "Asia/Seoul" };
+const dayKey = d => d.toLocaleDateString("ko-KR", { ...KST, year: "numeric", month: "2-digit", day: "2-digit" });
+const dayLabel = d => {
+  const today = new Date(), tomorrow = new Date(Date.now() + 864e5);
+  const base = d.toLocaleDateString("ko-KR", { ...KST, month: "long", day: "numeric", weekday: "short" });
+  if (dayKey(d) === dayKey(today)) return "오늘 · " + base;
+  if (dayKey(d) === dayKey(tomorrow)) return "내일 · " + base;
+  return base;
+};
+const timeLabel = d => d.toLocaleTimeString("ko-KR", { ...KST, hour: "numeric", minute: "2-digit" });
+
+let all = [], onlyOpen = false;
+
+function render() {
+  const list = document.getElementById("list");
+  const items = all.filter(m => !onlyOpen || m.status === "OPENED");
+  if (!items.length) {
+    list.innerHTML = `<div class="msg">${onlyOpen ? "지금 모집중인 일정이 없어요." : "다가오는 일정이 없어요."}<br>당근에서 새 일정을 만들어 보세요.</div>`;
+    return;
+  }
+  let html = "", lastDay = "";
+  for (const m of items) {
+    const d = new Date(m.meetAt);
+    if (dayKey(d) !== lastDay) { lastDay = dayKey(d); html += `<div class="day">${esc(dayLabel(d))}</div>`; }
+    const open = m.status === "OPENED";
+    const statusTag = open ? `<span class="tag open">모집중</span>`
+      : m.status === "FULLY_RECRUITED" ? `<span class="tag full">마감</span>` : `<span class="tag full">종료</span>`;
+    const pct = m.max ? Math.min(100, Math.round(m.current / m.max * 100)) : 0;
+    html += `<article class="meet${open ? "" : " closed"}">
+      <div class="thumb">${m.image ? `<img src="${esc(m.image)}" alt="" loading="lazy">` : "🎲"}</div>
+      <div class="info">
+        <div class="top"><span class="time">${esc(timeLabel(d))}</span><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span></div>
+        <div class="name">${esc(m.name)}</div>
+        ${m.place ? `<div class="place">📍 ${esc(m.place.name)}${m.place.address ? ` <small>${esc(m.place.address)}</small>` : ""}</div>` : ""}
+        ${m.max ? `<div class="people"><span>${m.current}/${m.max}명</span><span class="bar"><i style="width:${pct}%"></i></span></div>` : ""}
+        <a class="go${open ? "" : " ghost"}" href="${esc(appLink(`/group/${GROUP_DB_ID}/meetups/${m.id}`))}">${open ? "당근에서 참석하기" : "당근에서 보기"}</a>
+      </div>
+    </article>`;
+  }
+  list.innerHTML = html;
+}
+
+function setFilter(open) {
+  onlyOpen = open;
+  document.getElementById("f-all").classList.toggle("on", !open);
+  document.getElementById("f-open").classList.toggle("on", open);
+  render();
+}
+document.getElementById("f-all").onclick = () => setFilter(false);
+document.getElementById("f-open").onclick = () => setFilter(true);
+
+fetch("meetups.json", { cache: "no-store" })
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => {
+    const now = Date.now();
+    all = (data.meetups || [])
+      .filter(m => new Date(m.meetAt).getTime() + 3 * 3600e3 > now)
+      .sort((a, b) => a.meetAt.localeCompare(b.meetAt));
+    if (data.fetchedAt) {
+      const f = new Date(data.fetchedAt);
+      document.getElementById("updated").textContent =
+        "마지막 업데이트: " + f.toLocaleString("ko-KR", { ...KST, month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
+    }
+    render();
+  })
+  .catch(() => {
+    document.getElementById("list").innerHTML =
+      `<div class="msg">일정을 불러오지 못했어요.<br><a href="${esc(GROUP_WEB)}">당근 모임 페이지에서 보기</a></div>`;
+  });
+</script>
+</body>
+</html>

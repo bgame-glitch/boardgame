@@ -75,6 +75,13 @@
   .brand .sub { display: block; font-size: 14px; color: var(--accent); letter-spacing: .5px; }
   .brand .main { display: block; font-size: 26px; color: var(--text); }
   .brand .main span { color: #f2b705; -webkit-text-stroke: .6px #7a4a1c; }
+  /* 게임 찾기 / 모임 일정 탭 (schedule.html 과 같은 모양) */
+  .tabs { display: flex; gap: 6px; padding: 8px 16px 0; }
+  .tabs a {
+    flex: 1; text-align: center; text-decoration: none; padding: 9px 0; border-radius: 10px;
+    font-size: 15px; font-weight: 600; color: var(--muted); background: var(--card); border: 1px solid var(--line);
+  }
+  .tabs a.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
   #reset {
     font-size: 13px; background: none; border: 1px solid var(--line);
     color: var(--muted); border-radius: 999px; padding: 4px 10px; cursor: pointer;
@@ -184,6 +191,10 @@
     <button id="reset">초기화</button>
   </div>
 </header>
+<nav class="tabs">
+  <a href="./" class="on" aria-current="page">게임 찾기</a>
+  <a href="schedule.html">모임 일정</a>
+</nav>
 <div class="bar" id="bar">
   <input id="search" type="search" placeholder="게임 이름 검색" autocomplete="off">
   <button id="ftoggle" aria-controls="filters" aria-expanded="true">필터 <span id="fcount">▲</span><span class="badge" id="fbadge"></span></button>
