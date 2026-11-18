@@ -130,7 +130,6 @@
   }
   .menu button:hover { background: var(--bg); }
   .menu button.danger { color: var(--loc); }
-  .edited { font-size: 11px; color: var(--muted); }
   /* 수정·삭제·비밀번호 창 */
   #modal-bg {
     position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45);
@@ -258,7 +257,7 @@ function render() {
     html += `<article class="meet${open ? "" : " closed"}">
       <div class="thumb">${m.image ? `<img src="${esc(m.image)}" alt="" loading="lazy">` : "🎲"}</div>
       <div class="info">
-        <div class="top"><span class="time">${esc(timeLabel(d))}${m.edited ? ` <span class="edited">· 직접 수정됨</span>` : ""}</span><span class="right"><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span><button class="more" type="button" data-more="${esc(m.id)}" aria-label="일정 메뉴">⋮</button></span></div>
+        <div class="top"><span class="time">${esc(timeLabel(d))}</span><span class="right"><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span><button class="more" type="button" data-more="${esc(m.id)}" aria-label="일정 메뉴">⋮</button></span></div>
         <div class="name">${esc(m.name)}</div>
         ${m.place ? `<div class="place">📍 ${esc(m.place.name)}${m.place.address ? ` <small>${esc(m.place.address)}</small>` : ""}</div>` : ""}
         ${m.description ? `<div class="desc">${esc(m.description)}</div>` : ""}
