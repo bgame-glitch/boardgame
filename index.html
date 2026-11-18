@@ -129,7 +129,8 @@
   }
   #sheet-bg.open { display: flex; }
   #sheet {
-    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    width: 100%; max-width: 520px; max-height: 90vh; max-height: 90dvh; overflow-y: auto;
+    overscroll-behavior: contain; /* 상세 보기를 끝까지 내려도 뒤 목록이 같이 밀리지 않게 */
     background: var(--card); border-radius: 18px 18px 0 0;
     padding: 18px 16px calc(20px + env(safe-area-inset-bottom));
   }
@@ -229,10 +230,10 @@ const SHELVES = {
 const PLAYER_OPTIONS = [2, 3, 4, 5, 6]; // 6 = 6명 이상
 const DIFF_LABEL = { 1: "★ 쉬움", 2: "★★ 보통", 3: "★★★ 어려움" };
 const TIME_OPTIONS = [
-  { key: "t30",  label: "30분 이하", test: t => t <= 30 },
-  { key: "t60",  label: "1시간 이하", test: t => t > 30 && t <= 60 },
-  { key: "t120", label: "1~2시간",   test: t => t > 60 && t <= 120 },
-  { key: "t121", label: "2시간 이상", test: t => t > 120 },
+  { key: "t30",  label: "30분 이하",  test: t => t <= 30 },
+  { key: "t60",  label: "30분~1시간", test: t => t > 30 && t <= 60 },
+  { key: "t120", label: "1~2시간",    test: t => t > 60 && t <= 120 },
+  { key: "t121", label: "2시간 넘게", test: t => t > 120 },
 ];
 
 let games = [];
@@ -312,13 +313,24 @@ function chip(label, on, onClick) {
 function toggle(set, v) { set.has(v) ? set.delete(v) : set.add(v); }
 
 function renderFilters() {
+  // 칩 줄을 옆으로 밀어 둔 위치를 기억했다가 다시 그린 뒤 되돌려요 (누를 때마다 맨 앞으로 튀지 않게)
+  const scrolls = [...document.querySelectorAll("#filters .chips")].map(el => [el.id, el.scrollLeft]);
+  requestAnimationFrame(() => scrolls.forEach(([id, x]) => { const el = document.getElementById(id); if (el) el.scrollLeft = x; }));
   const g = document.getElementById("f-genre"); g.innerHTML = "";
   uniq(games.map(x => x.genre)).forEach(v =>
     g.appendChild(chip(v, sel.genre.has(v), () => {
+      const turningOff = sel.genre.has(v);
       toggle(sel.genre, v);
-      // 선택 해제된 장르의 세부장르는 같이 해제
-      const valid = new Set(subOptions());
-      [...sel.sub].forEach(s => { if (!valid.has(s)) sel.sub.delete(s); });
+      if (turningOff) {
+        // 끈 장르의 세부장르는 같이 해제 (아직 켜진 다른 장르에도 있는 세부장르는 유지)
+        const stillOn = new Set(games.filter(x => sel.genre.has(x.genre)).map(x => x.sub));
+        const ofOff = new Set(games.filter(x => x.genre === v).map(x => x.sub));
+        [...sel.sub].forEach(s => { if (ofOff.has(s) && !stillOn.has(s)) sel.sub.delete(s); });
+      } else if (sel.sub.size) {
+        // 장르를 켜면 그 장르들에 없는 세부장르 선택은 풀어요
+        const valid = new Set(subOptions());
+        [...sel.sub].forEach(s => { if (!valid.has(s)) sel.sub.delete(s); });
+      }
       update();
     })));
 
@@ -355,6 +367,7 @@ function matches(x) {
   if (sel.genre.size && !sel.genre.has(x.genre)) return false;
   if (sel.sub.size && !sel.sub.has(x.sub)) return false;
   if (sel.players !== null) {
+    if (x.noPlayers) return false; // 인원 정보가 없는 게임은 인원으로 고를 때 빼요
     if (sel.players === 6 ? x.max < 6 : (x.min > sel.players || x.max < sel.players)) return false;
   }
   if (sel.diff.size && !sel.diff.has(x.diff)) return false;
