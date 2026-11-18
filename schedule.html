@@ -113,6 +113,48 @@
   .add button:disabled { opacity: .5; cursor: default; }
   #add-msg { font-size: 13px; font-weight: 600; }
   #add-msg.ok { color: var(--accent); } #add-msg.err { color: var(--loc); }
+  /* 목록 / 달력 전환 */
+  .views { display: flex; padding: 3px; margin-bottom: 10px; border-radius: 10px; background: var(--line); }
+  .views button {
+    flex: 1; border: none; background: none; color: var(--muted); cursor: pointer;
+    padding: 7px 0; border-radius: 8px; font-size: 14px; font-weight: 600;
+  }
+  .views button.on { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  /* 달력 */
+  .cal { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 10px 8px 8px; margin-bottom: 4px; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; padding: 0 4px 8px; }
+  .cal-head b { font-family: "Jua", sans-serif; font-weight: 400; font-size: 19px; }
+  .cal-head button {
+    width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--text); font-size: 15px; cursor: pointer;
+  }
+  .cal-head button:disabled { opacity: .35; cursor: default; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+  .cal-grid .wd { text-align: center; font-size: 12px; color: var(--muted); padding: 2px 0 4px; }
+  .cal-grid .wd.sun, .cal-day.sun .n { color: var(--loc); }
+  .cal-day {
+    min-width: 0; aspect-ratio: 1 / 1.05; border: none; border-radius: 10px; background: none; color: var(--text);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
+    padding: 6px 0 0; cursor: pointer; font-variant-numeric: tabular-nums;
+  }
+  .cal-day .n { font-size: 15px; line-height: 1.2; width: 26px; height: 22px; display: grid; place-items: center; border-radius: 999px; }
+  .cal-day.today .n { box-shadow: 0 0 0 1.5px var(--accent) inset; font-weight: 700; }
+  .cal-day.past .n { color: var(--muted); opacity: .6; }
+  .cal-day.sel { background: var(--accent); }
+  .cal-day.sel .n { color: var(--accent-text) !important; box-shadow: none; font-weight: 700; }
+  .cal-day.empty { visibility: hidden; cursor: default; }
+  .dots { display: flex; gap: 3px; align-items: center; height: 7px; }
+  .dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .dots i.full { background: var(--full); }
+  .dots em { font-style: normal; font-size: 10px; line-height: 7px; color: var(--muted); }
+  .cal-day.sel .dots i { background: var(--accent-text); }
+  .cal-day.sel .dots i.full { background: var(--accent-text); opacity: .55; }
+  .cal-day.sel .dots em { color: var(--accent-text); }
+  .cal-legend { display: flex; gap: 12px; justify-content: flex-end; font-size: 11px; color: var(--muted); padding: 6px 4px 0; }
+  .cal-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .cal-legend i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .cal-legend i.full { background: var(--full); }
+  .day-empty { text-align: center; color: var(--muted); font-size: 14px; padding: 18px 0 6px; }
   /* ⋮ 메뉴 */
   .right { display: flex; align-items: center; gap: 4px; }
   .more {
@@ -179,6 +221,10 @@
   <a href="schedule.html" class="on" aria-current="page">모임 일정</a>
 </nav>
 <main>
+  <div class="views" role="tablist" aria-label="보기">
+    <button type="button" id="v-list" role="tab">☰ 목록</button>
+    <button type="button" id="v-cal" role="tab">📅 달력</button>
+  </div>
   <div class="tools">
     <button class="chip on" id="f-all" type="button">전체</button>
     <button class="chip" id="f-open" type="button">모집중만</button>
@@ -239,9 +285,23 @@ const timeLabel = d => d.toLocaleTimeString("ko-KR", { ...KST, hour: "numeric", 
 
 let all = [], onlyOpen = false;
 
+// 보기: 목록 / 달력 (이 휴대폰에 기억)
+let view = "list";
+try { if (localStorage.getItem("meetupView") === "cal") view = "cal"; } catch {}
+let calY = null, calM = null, selDay = null; // calM: 0~11, selDay: dayKey 문자열
+
+// 한국 시간 기준 연·월·일
+const kst = d => { const x = new Date(d.getTime() + 9 * 3600e3); return { y: x.getUTCFullYear(), m: x.getUTCMonth(), d: x.getUTCDate() }; };
+const keyOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+const keyOfDate = date => { const k = kst(date); return keyOf(k.y, k.m, k.d); };
+
 function render() {
-  const list = document.getElementById("list");
   const items = all.filter(m => !onlyOpen || m.status === "OPENED");
+  if (view === "cal") renderCal(items); else renderList(items);
+}
+
+function renderList(items) {
+  const list = document.getElementById("list");
   if (!items.length) {
     list.innerHTML = `<div class="msg">${onlyOpen ? "지금 모집중인 일정이 없어요." : "다가오는 일정이 없어요."}<br>당근에서 새 일정을 만들어 보세요.</div>`;
     return;
@@ -250,11 +310,88 @@ function render() {
   for (const m of items) {
     const d = new Date(m.meetAt);
     if (dayKey(d) !== lastDay) { lastDay = dayKey(d); html += `<div class="day">${esc(dayLabel(d))}</div>`; }
+    html += card(m);
+  }
+  list.innerHTML = html;
+}
+
+function renderCal(items) {
+  const list = document.getElementById("list");
+  const byDay = new Map();
+  for (const m of items) { const k = keyOfDate(new Date(m.meetAt)); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(m); }
+  const t = kst(new Date()), todayKey = keyOf(t.y, t.m, t.d);
+  if (calY == null) {
+    // 처음: 오늘에 일정이 있으면 오늘, 없으면 가장 가까운 일정이 있는 날
+    const first = byDay.has(todayKey) ? todayKey : [...byDay.keys()].sort()[0] || todayKey;
+    const [y, m] = first.split("-").map(Number);
+    calY = y; calM = m - 1; selDay = first;
+  }
+  const lead = new Date(Date.UTC(calY, calM, 1)).getUTCDay();
+  const days = new Date(Date.UTC(calY, calM + 1, 0)).getUTCDate();
+  const isThisMonth = calY === t.y && calM === t.m;
+  let grid = ["일", "월", "화", "수", "목", "금", "토"].map((w, i) => `<div class="wd${i === 0 ? " sun" : ""}">${w}</div>`).join("");
+  for (let i = 0; i < lead; i++) grid += `<span class="cal-day empty"></span>`;
+  for (let d = 1; d <= days; d++) {
+    const k = keyOf(calY, calM, d), ms = byDay.get(k) || [];
+    const dow = (lead + d - 1) % 7;
+    const cls = ["cal-day", dow === 0 ? "sun" : "", k === todayKey ? "today" : "", k < todayKey ? "past" : "", k === selDay ? "sel" : ""].filter(Boolean).join(" ");
+    const dots = ms.slice(0, 3).map(m => `<i class="${m.status === "OPENED" ? "" : "full"}"></i>`).join("") + (ms.length > 3 ? `<em>+</em>` : "");
+    const label = `${calM + 1}월 ${d}일${ms.length ? `, 일정 ${ms.length}개` : ""}`;
+    grid += `<button type="button" class="${cls}" data-day="${k}" aria-label="${label}" aria-pressed="${k === selDay}"><span class="n">${d}</span><span class="dots">${dots}</span></button>`;
+  }
+  const sel = byDay.get(selDay) || [];
+  const [sy, sm, sd] = selDay.split("-").map(Number);
+  const selDate = new Date(Date.UTC(sy, sm - 1, sd, 3)); // 정오(KST) 근처로 잡아 날짜가 밀리지 않게
+  list.innerHTML = `<div class="cal">
+      <div class="cal-head">
+        <button type="button" data-cal="-1" aria-label="이전 달" ${isThisMonth ? "disabled" : ""}>◀</button>
+        <b>${calY}년 ${calM + 1}월</b>
+        <button type="button" data-cal="1" aria-label="다음 달">▶</button>
+      </div>
+      <div class="cal-grid">${grid}</div>
+      <div class="cal-legend"><span><i></i>모집중</span><span><i class="full"></i>마감</span></div>
+    </div>
+    <div class="day">${esc(dayLabel(selDate))}</div>
+    ${sel.length ? sel.map(card).join("") : `<div class="day-empty">이 날은 일정이 없어요.</div>`}`;
+}
+
+function setView(v) {
+  view = v;
+  try { localStorage.setItem("meetupView", v); } catch {}
+  document.getElementById("v-list").classList.toggle("on", v === "list");
+  document.getElementById("v-cal").classList.toggle("on", v === "cal");
+  document.getElementById("v-list").setAttribute("aria-selected", v === "list");
+  document.getElementById("v-cal").setAttribute("aria-selected", v === "cal");
+  render();
+}
+for (const [id, v] of [["v-list", "list"], ["v-cal", "cal"]]) {
+  document.getElementById(id).classList.toggle("on", view === v);
+  document.getElementById(id).setAttribute("aria-selected", view === v);
+}
+document.getElementById("v-list").onclick = () => setView("list");
+document.getElementById("v-cal").onclick = () => setView("cal");
+document.getElementById("list").addEventListener("click", e => {
+  const day = e.target.closest("[data-day]");
+  if (day) { selDay = day.dataset.day; render(); return; }
+  const nav = e.target.closest("[data-cal]");
+  if (nav && !nav.disabled) {
+    calM += Number(nav.dataset.cal);
+    if (calM < 0) { calM = 11; calY--; } if (calM > 11) { calM = 0; calY++; }
+    selDay = keyOf(calY, calM, 1);
+    // 그 달에 일정이 있으면 첫 일정 날을 골라둬요
+    const firstInMonth = all.map(m => keyOfDate(new Date(m.meetAt))).filter(k => k.startsWith(keyOf(calY, calM, 1).slice(0, 8))).sort()[0];
+    if (firstInMonth) selDay = firstInMonth;
+    render();
+  }
+});
+
+function card(m) {
+    const d = new Date(m.meetAt);
     const open = m.status === "OPENED";
     const statusTag = open ? `<span class="tag open">모집중</span>`
       : m.status === "FULLY_RECRUITED" ? `<span class="tag full">마감</span>` : `<span class="tag full">종료</span>`;
     const pct = m.max ? Math.min(100, Math.round(m.current / m.max * 100)) : 0;
-    html += `<article class="meet${open ? "" : " closed"}">
+    return `<article class="meet${open ? "" : " closed"}">
       <div class="thumb">${m.image ? `<img src="${esc(m.image)}" alt="" loading="lazy">` : "🎲"}</div>
       <div class="info">
         <div class="top"><span class="time">${esc(timeLabel(d))}</span><span class="right"><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span><button class="more" type="button" data-more="${esc(m.id)}" aria-label="일정 메뉴">⋮</button></span></div>
@@ -266,8 +403,6 @@ function render() {
         <a class="go${open ? "" : " ghost"}" href="${esc(appLink(`/group/${GROUP_DB_ID}/meetups/${m.id}`))}">${open ? "당근에서 참석하기" : "당근에서 보기"}</a>
       </div>
     </article>`;
-  }
-  list.innerHTML = html;
 }
 
 function setFilter(open) {
