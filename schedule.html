@@ -183,10 +183,12 @@
   .menu button.danger { color: var(--loc); }
   /* 수정·삭제·비밀번호 창 */
   #modal-bg {
+    cursor: pointer; /* 아이폰에서 바깥 탭으로 닫히게 */
     position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45);
     display: flex; align-items: flex-end; justify-content: center;
   }
   #modal {
+    cursor: auto;
     width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
     background: var(--card); border-radius: 18px 18px 0 0; display: grid; gap: 12px;
     padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
@@ -242,11 +244,11 @@
   <div id="updated"></div>
   <div id="list"><div class="msg">불러오는 중…</div></div>
   <a class="all" id="all">당근에서 전체 일정 보기</a>
-  <form class="add" id="add" hidden>
+  <form class="add" id="add" hidden novalidate>
     <label for="add-link">찾는 일정이 없나요? 공유 링크 붙여넣기</label>
     <p>당근 일정 화면에서 <b>공유 → 링크 복사</b>를 누르고 여기에 붙여넣어 주세요.</p>
     <div class="row">
-      <input id="add-link" type="url" inputmode="url" placeholder="https://daangn.com/kr/share/…" autocomplete="off">
+      <input id="add-link" type="text" inputmode="url" autocapitalize="off" spellcheck="false" placeholder="https://daangn.com/kr/share/…" autocomplete="off">
       <button id="add-btn" type="submit">추가</button>
     </div>
     <div id="add-msg" role="status"></div>
@@ -309,6 +311,7 @@ const keyOf = (y, m, d) => `${y}-${String(m + 1).padStart(2, "0")}-${String(d).p
 const keyOfDate = date => { const k = kst(date); return keyOf(k.y, k.m, k.d); };
 
 function render() {
+  if (typeof closeMenu === "function") closeMenu(); // 다시 그리면 열려 있던 ⋮ 메뉴는 닫아요
   const items = all.filter(m => !onlyOpen || !isFull(m));
   if (view === "cal") renderCal(items); else renderList(items);
 }
@@ -537,10 +540,23 @@ window.addEventListener("popstate", () => {
 });
 $("modal-bg").addEventListener("click", e => { if (e.target.id === "modal-bg") closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeMenu(); closeModal(); } });
+// 아이폰은 빈 곳을 탭하면 click 이 안 생겨서, 손가락이 닿는 순간(pointerdown)에 메뉴를 닫아요
+document.addEventListener("pointerdown", e => {
+  if (!e.target.closest(".menu") && !e.target.closest("[data-more]")) closeMenu();
+});
+window.addEventListener("scroll", closeMenu, { passive: true });
+
+// 버튼을 두 번 눌러도 요청은 한 번만 가게 해요
+function once(fn) {
+  let busy = false;
+  return async (...a) => { if (busy) return; busy = true; try { await fn(...a); } finally { busy = false; } };
+}
+const errOut = (text) => { const el = $("m-err"); if (el) el.textContent = text; };
+const enable = (id) => { const el = $(id); if (el) el.disabled = false; };
 
 document.addEventListener("click", e => {
   const btn = e.target.closest("[data-more]");
-  if (!btn) { if (!e.target.closest(".menu")) closeMenu(); return; }
+  if (!btn) return;
   e.stopPropagation();
   const open = document.querySelector(".menu");
   closeMenu();
@@ -583,27 +599,27 @@ function withPin(next) {
     <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">확인</button></div>`);
   $("m-pin").focus();
   $("m-cancel").onclick = closeModal;
-  const go = async () => {
+  const go = once(async () => {
     const pin = $("m-pin").value; if (!pin) return;
     $("m-ok").disabled = true;
     try {
       const r = await post({ action: "check", pin });
-      if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+      if (!r.ok) { errOut(r.error); enable("m-ok"); return; }
       keepPin(pin); next(); // 같은 창에서 바로 다음 화면으로 (뒤로가기 기록 유지)
-    } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
-  };
+    } catch { errOut("연결이 안 돼요. 잠시 뒤 다시 해 주세요."); enable("m-ok"); }
+  });
   $("m-ok").onclick = go;
   $("m-pin").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
 }
 
-async function adminPost(body, errEl, btn) {
-  btn.disabled = true;
+async function adminPost(body) {
+  $("m-ok").disabled = true;
   try {
     const r = await post({ ...body, pin: savedPin() });
-    if (r.badPin) keepPin("");
-    if (!r.ok) { errEl.textContent = r.error; btn.disabled = false; return null; }
+    if (r.badPin) { keepPin(""); r.error = "비밀번호가 바뀌었어요. 창을 닫고 다시 시도해 주세요."; }
+    if (!r.ok) { errOut(r.error); enable("m-ok"); return null; }
     return r;
-  } catch { errEl.textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; btn.disabled = false; return null; }
+  } catch { errOut("연결이 안 돼요. 잠시 뒤 다시 해 주세요."); enable("m-ok"); return null; }
 }
 
 function editForm(m) {
@@ -617,14 +633,26 @@ function editForm(m) {
     <div class="err" id="m-err"></div>
     <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">저장</button></div>`);
   $("m-cancel").onclick = closeModal;
-  $("m-ok").onclick = async () => {
-    const cur = $("m-cur").value, max = $("m-max").value, time = $("m-time").value;
-    if (cur && max && +cur > +max) { $("m-err").textContent = "참석 인원이 정원보다 많아요."; return; }
-    const r = await adminPost({ action: "edit", id: m.id, place: $("m-place").value, current: cur, max, meetAt: time ? fromKstInput(time) : "" }, $("m-err"), $("m-ok"));
+  // 바꾼 칸만 보내요. 손대지 않은 칸은 당근 정보(또는 전에 고친 값)를 그대로 따라가요
+  const orig = { place: m.place ? m.place.name : "", current: m.current ?? "", max: m.max ?? "", time: toKstInput(m.meetAt) };
+  $("m-ok").onclick = once(async () => {
+    const place = $("m-place").value.trim(), cur = $("m-cur").value, max = $("m-max").value, time = $("m-time").value;
+    if (cur !== "" && (+cur < 0 || !Number.isInteger(+cur))) { errOut("참석 인원은 0 이상의 숫자로 적어 주세요."); return; }
+    if (max !== "" && (+max < 1 || !Number.isInteger(+max))) { errOut("정원은 1 이상의 숫자로 적어 주세요."); return; }
+    const curN = cur !== "" ? +cur : m.current, maxN = max !== "" ? +max : m.max;
+    if (curN != null && maxN != null && curN > maxN) { errOut("참석 인원이 정원보다 많아요."); return; }
+    const body = { action: "edit", id: m.id };
+    if (place !== orig.place) body.place = place;
+    if (cur !== String(orig.current)) body.current = cur;
+    if (max !== String(orig.max)) body.max = max;
+    if (time && time !== orig.time) body.meetAt = fromKstInput(time);
+    if (Object.keys(body).length === 2) { closeModal(); return; } // 바뀐 게 없어요
+    const r = await adminPost(body);
     if (!r) return;
     if (r.meetup) all = upcoming([...all.filter(x => x.id !== m.id), r.meetup]);
+    else all = all.filter(x => x.id !== m.id); // 시간을 지난 날로 바꾸면 목록에서 빠져요
     render(); closeModal(); toast("수정했어요");
-  };
+  });
 }
 
 function deleteForm(m) {
@@ -632,12 +660,12 @@ function deleteForm(m) {
     <div class="err" id="m-err"></div>
     <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="del" id="m-ok">삭제</button></div>`);
   $("m-cancel").onclick = closeModal;
-  $("m-ok").onclick = async () => {
-    const r = await adminPost({ action: "delete", id: m.id }, $("m-err"), $("m-ok"));
+  $("m-ok").onclick = once(async () => {
+    const r = await adminPost({ action: "delete", id: m.id });
     if (!r) return;
     all = all.filter(x => x.id !== m.id);
     render(); closeModal(); toast("사이트에서 뺐어요");
-  };
+  });
 }
 
 // ── 당근 없이 참석 / 취소 (닉네임만, 누구나) ───────────────────────────────
@@ -655,18 +683,18 @@ document.addEventListener("click", e => {
       <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">참석</button></div>`);
     $("m-nick").focus();
     $("m-cancel").onclick = closeModal;
-    const go = async () => {
-      const name = $("m-nick").value.trim();
-      if (!name) { $("m-err").textContent = "닉네임을 입력해 주세요."; return; }
+    const go = once(async () => {
+      const name = $("m-nick").value.replace(/\s+/g, " ").trim();
+      if (!name) { errOut("닉네임을 입력해 주세요."); return; }
       $("m-ok").disabled = true;
       try {
         const r = await post({ action: "join", id: m.id, name });
         if (r.meetup) putMeetup(r.meetup);
-        if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+        if (!r.ok) { errOut(r.error); enable("m-ok"); return; }
         try { localStorage.setItem(NICK_KEY, name); } catch {}
         closeModal(); toast(`${name} 님 참석했어요`);
-      } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
-    };
+      } catch { errOut("연결이 안 돼요. 잠시 뒤 다시 해 주세요."); enable("m-ok"); }
+    });
     $("m-ok").onclick = go;
     $("m-nick").addEventListener("keydown", ev => { if (ev.key === "Enter") go(); });
     return;
@@ -678,14 +706,14 @@ document.addEventListener("click", e => {
       <div class="err" id="m-err"></div>
       <div class="acts"><button type="button" id="m-cancel">닫기</button><button type="button" class="del" id="m-ok">참석 취소</button></div>`);
     $("m-cancel").onclick = closeModal;
-    $("m-ok").onclick = async () => {
+    $("m-ok").onclick = once(async () => {
       $("m-ok").disabled = true;
       try {
         const r = await post({ action: "leave", id: m.id, name });
-        if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+        if (!r.ok) { errOut(r.error); enable("m-ok"); return; }
         putMeetup(r.meetup); closeModal(); toast("참석을 취소했어요");
-      } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
-    };
+      } catch { errOut("연결이 안 돼요. 잠시 뒤 다시 해 주세요."); enable("m-ok"); }
+    });
   }
 });
 

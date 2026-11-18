@@ -4,7 +4,7 @@
     "dbId": "412730",
     "webUrl": "https://www.daangn.com/kr/group/xgfk9uzqfji2/"
   },
-  "fetchedAt": "2026-11-18T16:05:51.368Z",
+  "fetchedAt": "2026-11-18T18:00:12.552Z",
   "meetups": [
     {
       "id": "306612885",
@@ -12,7 +12,7 @@
       "image": "https://img.kr.gcp-karroter.net/community/community/20261112/2f454809-cc49-4f81-a973-c33b1273c3ea.png?service=community",
       "groupOnly": true,
       "status": "OPENED",
-      "current": 3,
+      "current": 2,
       "max": 4,
       "meetAt": "2026-11-19T11:00:00Z",
       "place": {
@@ -21,7 +21,7 @@
         "lat": 35.69260475917332,
         "lon": 128.46519902799287
       },
-      "lastSeenAt": "2026-11-18T16:05:51.368Z"
+      "guests": []
     },
     {
       "id": "306684423",
@@ -29,7 +29,7 @@
       "image": null,
       "groupOnly": false,
       "status": "OPENED",
-      "current": 3,
+      "current": 4,
       "max": 8,
       "meetAt": "2026-11-21T06:00:00Z",
       "place": {
@@ -38,7 +38,7 @@
         "lat": 35.699049501054844,
         "lon": 128.45997559895204
       },
-      "lastSeenAt": "2026-11-18T16:05:51.368Z"
+      "guests": []
     },
     {
       "id": "306547470",
@@ -46,7 +46,7 @@
       "image": "https://img.kr.gcp-karroter.net/community/community/20261108/81209b07-78a1-400d-a914-160e88ddea4c.jpeg?service=community",
       "groupOnly": false,
       "status": "OPENED",
-      "current": 7,
+      "current": 6,
       "max": 17,
       "meetAt": "2026-11-22T05:00:00Z",
       "place": {
@@ -55,7 +55,7 @@
         "lat": 35.6991249656192,
         "lon": 128.459958325324
       },
-      "lastSeenAt": "2026-11-18T16:05:51.368Z"
+      "guests": []
     },
     {
       "id": "306619647",
@@ -72,10 +72,9 @@
         "lat": 35.69923244188554,
         "lon": 128.45989220820368
       },
-      "lastSeenAt": "2026-11-18T16:05:51.368Z"
+      "guests": []
     },
     {
-      "description": "1년간 여정을 즐겼던 프로스트헤이븐~\n게임정리및 뒤풀이 합니다.",
       "id": "306708103",
       "name": "프로스트헤이븐 정리 및 마무리파티",
       "image": "https://img.kr.gcp-karroter.net/community/community/20261118/87c5c1c3-3598-45cc-bf6b-205903d9a1ca.jpeg?service=community",
@@ -90,7 +89,9 @@
         "lat": 35.6991249656192,
         "lon": 128.459958325324
       },
-      "lastSeenAt": "2026-11-18T16:05:51.368Z"
+      "description": "1년간 여정을 즐겼던 프로스트헤이븐~\n게임정리및 뒤풀이 합니다.",
+      "link": "https://www.daangn.com/kr/meetups/Pw1xrko5/",
+      "guests": []
     }
   ],
   "links": {

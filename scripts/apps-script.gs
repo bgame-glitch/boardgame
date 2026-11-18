@@ -43,16 +43,25 @@ function doPost(e) {
     if (!/^\d+$/.test(id)) return json_({ ok: false, error: "일정 번호가 잘못됐어요." });
 
     if (b.action === "edit") {
-      const o = {};
-      if (typeof b.place === "string") o.place = b.place.trim().slice(0, 60);
-      if (b.current !== "" && b.current != null) o.current = Math.max(0, Math.min(999, parseInt(b.current, 10) || 0));
-      if (b.max !== "" && b.max != null) o.max = Math.max(1, Math.min(999, parseInt(b.max, 10) || 1));
+      // 보낸 칸만 바꾸고, 전에 고친 값은 유지해요. 빈 값을 보내면 당근 정보로 되돌려요
+      const o = JSON.parse(props.getProperty("O:" + id) || "{}");
+      const setNum = (key, v, min) => {
+        if (v === undefined) return;
+        if (v === "" || v === null) { delete o[key]; return; }
+        const n = parseInt(v, 10);
+        if (isNaN(n)) return;
+        o[key] = Math.max(min, Math.min(999, n));
+      };
+      if (typeof b.place === "string") { const p = b.place.trim().slice(0, 60); if (p) o.place = p; else delete o.place; }
+      setNum("current", b.current, 0);
+      setNum("max", b.max, 1);
       if (b.meetAt) {
         const d = new Date(b.meetAt);
         if (isNaN(d.getTime())) return json_({ ok: false, error: "시간 형식이 잘못됐어요." });
         o.meetAt = d.toISOString();
       }
-      props.setProperty("O:" + id, JSON.stringify(o));
+      if (Object.keys(o).length) props.setProperty("O:" + id, JSON.stringify(o));
+      else props.deleteProperty("O:" + id);
       CacheService.getScriptCache().remove("list");
       const m = list_().meetups.find(x => x.id === id);
       return json_({ ok: true, meetup: m || null });
@@ -87,16 +96,16 @@ function guestSheet_() {
   return sh;
 }
 
+const cleanName_ = n => String(n || "").replace(/\s+/g, " ").trim().slice(0, 20);
+
 function guestsById_() {
   const map = {};
   guestSheet_().getDataRange().getDisplayValues().slice(1).forEach(r => {
-    const id = String(r[1]).trim(), name = String(r[2]).trim();
-    if (id && name) (map[id] = map[id] || []).push(name);
+    const id = String(r[1]).trim(), name = cleanName_(r[2]);
+    if (id && name && (map[id] = map[id] || []).indexOf(name) < 0) map[id].push(name);
   });
   return map;
 }
-
-const cleanName_ = n => String(n || "").replace(/\s+/g, " ").trim().slice(0, 20);
 const isFull_ = m => m.status !== "OPENED" ||
   (m.max != null && (m.current || 0) + (m.guests ? m.guests.length : 0) >= m.max);
 
@@ -117,16 +126,23 @@ function joinGuest_(id, rawName) {
     if ((m.guests || []).indexOf(name) >= 0) return { ok: false, error: `"${name}" 님은 이미 참석했어요.` };
     if (isFull_(m)) return { ok: false, error: "자리가 다 찼어요.", meetup: m };
     guestSheet_().appendRow([new Date(), id, name]);
-    return { ok: true, meetup: freshMeetup_(id) };
+    CacheService.getScriptCache().remove("list");
+    // 당근을 한 번 더 읽지 않고 바로 돌려줘요 (더 빨라요)
+    return { ok: true, meetup: Object.assign({}, m, { guests: (m.guests || []).concat([name]) }) };
   } finally { lock.releaseLock(); }
 }
 
 function leaveGuest_(id, rawName) {
   const name = cleanName_(rawName);
-  const sh = guestSheet_(), rows = sh.getDataRange().getDisplayValues();
-  for (let r = rows.length - 1; r >= 1; r--) {
-    if (String(rows[r][1]).trim() === id && String(rows[r][2]).trim() === name) { sh.deleteRow(r + 1); break; }
-  }
+  if (!/^\d+$/.test(id) || !name) return { ok: false, error: "취소할 참석을 찾을 수 없어요." };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sh = guestSheet_(), rows = sh.getDataRange().getDisplayValues();
+    for (let r = rows.length - 1; r >= 1; r--) {
+      if (String(rows[r][1]).trim() === id && cleanName_(rows[r][2]) === name) { sh.deleteRow(r + 1); break; }
+    }
+  } finally { lock.releaseLock(); }
   return { ok: true, meetup: freshMeetup_(id) };
 }
 
@@ -242,11 +258,47 @@ function cachedLink_(link) {
   const props = PropertiesService.getScriptProperties();
   const key = "L:" + link;
   const saved = props.getProperty(key);
-  if (saved) return JSON.parse(saved);
+  if (saved) {
+    const s = JSON.parse(saved);
+    // 못 읽었던 링크는 6시간 뒤에 다시 시도해요 (당근이 잠깐 안 됐을 수 있어서)
+    if (!s.bad || Date.now() - (s.at || 0) < 6 * 3600e3) return s;
+  }
   let r = null;
   try { r = resolveLink_(link); } catch (e) { return null; } // 잠깐 실패면 다음에 다시
-  props.setProperty(key, JSON.stringify(r || { bad: true }));
+  props.setProperty(key, JSON.stringify(r || { bad: true, at: Date.now() }));
   return r || { bad: true };
+}
+
+// 지난 일정의 저장값(링크 읽은 결과·수정값·숨김)을 하루에 한 번 정리해요. 저장 공간이 가득 차지 않게
+function cleanup_() {
+  const cache = CacheService.getScriptCache();
+  if (cache.get("cleaned")) return;
+  cache.put("cleaned", "1", 6 * 3600);
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties(), cutoff = Date.now() - 3 * 864e5; // 3일 지난 것
+  const pastIds = {};
+  const stale = v => (v.meetAt && new Date(v.meetAt).getTime() < cutoff) || (v.bad && v.at && v.at < cutoff);
+  // 응답 시트에서 지난 일정·못 읽는 링크 줄을 지워요 (게스트 탭 기록은 그대로 둬요)
+  const sh = sheet_(), rows = sh.getDataRange().getDisplayValues();
+  for (let r = rows.length - 1; r >= 1; r--) {
+    const links = rows[r].map(c => String(c).trim()).filter(c => /^https:\/\/(www\.)?daangn\.com\//.test(c));
+    if (!links.length) continue;
+    const vals = links.map(l => all["L:" + l] ? JSON.parse(all["L:" + l]) : null);
+    if (vals.every(v => v && stale(v))) sh.deleteRow(r + 1);
+  }
+  Object.keys(all).forEach(k => {
+    if (k.indexOf("L:") !== 0) return;
+    const v = JSON.parse(all[k] || "{}");
+    if (stale(v)) { if (v.id) pastIds[v.id] = true; props.deleteProperty(k); }
+  });
+  Object.keys(all).forEach(k => {
+    const id = k.slice(2);
+    if ((k.indexOf("O:") === 0 || k.indexOf("H:") === 0) && pastIds[id]) props.deleteProperty(k);
+    if (k.indexOf("O:") === 0) {
+      const o = JSON.parse(all[k] || "{}");
+      if (o.meetAt && new Date(o.meetAt).getTime() < cutoff) props.deleteProperty(k);
+    }
+  });
 }
 
 function merge_(linkItems, groupItems) {
@@ -272,6 +324,7 @@ function list_() {
   const cache = CacheService.getScriptCache();
   const hit = cache.get("list");
   if (hit) return JSON.parse(hit);
+  try { cleanup_(); } catch (e) {}
   const linkItems = sheetLinks_()
     .map(l => { const m = cachedLink_(l); return m && !m.bad ? Object.assign({}, m, { link: l }) : null; })
     .filter(Boolean);

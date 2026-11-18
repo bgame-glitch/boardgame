@@ -16,6 +16,30 @@ function findKey(obj, key) {
   return undefined;
 }
 
+// 구글 시트 웹 앱이 있으면 그 결과(게스트·수정·삭제 반영)를 그대로 백업으로 저장해요
+{
+  let cfg = {};
+  try { cfg = JSON.parse(await readFile(new URL("../meetup-config.json", import.meta.url), "utf8")); } catch {}
+  if (cfg.liveUrl) {
+    try {
+      const r = await fetch(cfg.liveUrl, { redirect: "follow" });
+      const live = await r.json();
+      if (live.ok && Array.isArray(live.meetups)) {
+        let prev = {};
+        try { prev = JSON.parse(await readFile(OUT, "utf8")); } catch {}
+        await writeFile(OUT, JSON.stringify({
+          group: prev.group || { name: "테크노폴리스 보드게임", dbId: "412730", webUrl: GROUP_PAGE },
+          fetchedAt: live.fetchedAt || new Date().toISOString(),
+          meetups: live.meetups,
+          links: prev.links || {},
+        }, null, 2) + "\n");
+        console.log(`시트 웹 앱에서 일정 ${live.meetups.length}개 저장`);
+        process.exit(0);
+      }
+    } catch (e) { console.warn("시트 웹 앱을 못 읽어서 당근 페이지를 직접 읽어요:", e.message); }
+  }
+}
+
 const res = await fetch(GROUP_PAGE, {
   headers: { "user-agent": "Mozilla/5.0 (meetup-board)", "accept-language": "ko-KR" },
 });
