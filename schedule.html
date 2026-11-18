@@ -146,7 +146,7 @@
     </div>
     <div id="add-msg" role="status"></div>
   </form>
-  <p class="note">일정은 당근 모임에서 2일마다 자동으로 가져와요.<br>참석 인원은 당근 앱에서 보는 게 가장 정확해요.</p>
+  <p class="note">일정은 당근 모임에서 자동으로 가져와요.<br>참석 인원은 당근 앱에서 보는 게 가장 정확해요.</p>
 </main>
 
 <script>
@@ -227,9 +227,40 @@ function setFilter(open) {
 document.getElementById("f-all").onclick = () => setFilter(false);
 document.getElementById("f-open").onclick = () => setFilter(true);
 
-// 공유 링크 붙여넣기 → 구글 설문지로 보내요 (meetup-config.json 에 설문지가 연결돼 있을 때만 보여요)
-fetch("meetup-config.json", { cache: "no-store" }).then(r => r.json()).then(cfg => {
-  if (!cfg.formAction || !cfg.formEntry) return;
+const getJson = (url, ms = 10000) => {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), ms);
+  return fetch(url, { cache: "no-store", signal: ctl.signal })
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .finally(() => clearTimeout(t));
+};
+const upcoming = list => {
+  const now = Date.now();
+  return (list || []).filter(m => new Date(m.meetAt).getTime() + 3 * 3600e3 > now)
+    .sort((a, b) => a.meetAt.localeCompare(b.meetAt));
+};
+function showData(data) {
+  all = upcoming(data.meetups);
+  const f = data.fetchedAt ? new Date(data.fetchedAt) : null;
+  document.getElementById("updated").textContent = data.live ? "당근에서 방금 가져온 일정이에요"
+    : f ? "마지막 업데이트: " + f.toLocaleString("ko-KR", { ...KST, month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+  render();
+}
+
+// 일정 불러오기: 구글 시트 스크립트(liveUrl)가 있으면 실시간으로, 안 되면 저장된 meetups.json 으로
+async function load(cfg) {
+  if (cfg.liveUrl) {
+    try { const d = await getJson(cfg.liveUrl); if (d.ok && Array.isArray(d.meetups)) return showData(d); } catch {}
+  }
+  try { showData(await getJson("meetups.json")); }
+  catch {
+    document.getElementById("list").innerHTML =
+      `<div class="msg">일정을 불러오지 못했어요.<br><a href="${esc(GROUP_WEB)}">당근 모임 페이지에서 보기</a></div>`;
+  }
+}
+
+// 공유 링크 붙여넣기: liveUrl 이 있으면 바로 목록에 추가, 없으면 구글 설문지로 보내요
+function setupAdd(cfg) {
+  if (!cfg.liveUrl && !(cfg.formAction && cfg.formEntry)) return;
   const form = document.getElementById("add"), input = document.getElementById("add-link"),
         btn = document.getElementById("add-btn"), msg = document.getElementById("add-msg");
   form.hidden = false;
@@ -241,34 +272,32 @@ fetch("meetup-config.json", { cache: "no-store" }).then(r => r.json()).then(cfg 
       say("당근 일정 공유 링크가 아니에요. 일정 화면에서 공유 → 링크 복사를 눌러 주세요.", false); return;
     }
     btn.disabled = true;
-    try {
-      await fetch(cfg.formAction, { method: "POST", mode: "no-cors",
-        body: new URLSearchParams({ [cfg.formEntry]: found[0] }) });
-      input.value = "";
-      say("추가했어요. 다음 자동 업데이트 때 목록에 나타나요.", true);
-    } catch { say("보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.", false); }
+    if (cfg.liveUrl) {
+      say("당근에서 일정을 읽는 중이에요…", true);
+      try {
+        const r = await getJson(cfg.liveUrl + (cfg.liveUrl.includes("?") ? "&" : "?") +
+          "action=add&link=" + encodeURIComponent(found[0]), 20000);
+        if (!r.ok) throw new Error(r.error || "추가하지 못했어요.");
+        all = upcoming([...all.filter(m => m.id !== r.meetup.id), r.meetup]);
+        setFilter(false);
+        input.value = "";
+        say(`"${r.meetup.name}" 일정을 추가했어요.`, true);
+      } catch (err) {
+        say(err.name === "AbortError" ? "응답이 늦어요. 잠시 뒤 다시 눌러 주세요." : err.message, false);
+      }
+    } else {
+      try {
+        await fetch(cfg.formAction, { method: "POST", mode: "no-cors",
+          body: new URLSearchParams({ [cfg.formEntry]: found[0] }) });
+        input.value = "";
+        say("추가했어요. 다음 자동 업데이트 때 목록에 나타나요.", true);
+      } catch { say("보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.", false); }
+    }
     btn.disabled = false;
   });
-}).catch(() => {});
+}
 
-fetch("meetups.json", { cache: "no-store" })
-  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-  .then(data => {
-    const now = Date.now();
-    all = (data.meetups || [])
-      .filter(m => new Date(m.meetAt).getTime() + 3 * 3600e3 > now)
-      .sort((a, b) => a.meetAt.localeCompare(b.meetAt));
-    if (data.fetchedAt) {
-      const f = new Date(data.fetchedAt);
-      document.getElementById("updated").textContent =
-        "마지막 업데이트: " + f.toLocaleString("ko-KR", { ...KST, month: "numeric", day: "numeric", hour: "numeric", minute: "2-digit" });
-    }
-    render();
-  })
-  .catch(() => {
-    document.getElementById("list").innerHTML =
-      `<div class="msg">일정을 불러오지 못했어요.<br><a href="${esc(GROUP_WEB)}">당근 모임 페이지에서 보기</a></div>`;
-  });
+getJson("meetup-config.json").catch(() => ({})).then(cfg => { setupAdd(cfg); load(cfg); });
 </script>
 </body>
 </html>
