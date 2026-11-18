@@ -28,6 +28,7 @@
     }
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     margin: 0; background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
@@ -112,6 +113,56 @@
   .add button:disabled { opacity: .5; cursor: default; }
   #add-msg { font-size: 13px; font-weight: 600; }
   #add-msg.ok { color: var(--accent); } #add-msg.err { color: var(--loc); }
+  /* ⋮ 메뉴 */
+  .right { display: flex; align-items: center; gap: 4px; }
+  .more {
+    border: none; background: none; color: var(--muted); cursor: pointer;
+    width: 32px; height: 28px; margin-right: -8px; border-radius: 8px; font-size: 20px; line-height: 1;
+  }
+  .more:hover { background: var(--bg); }
+  .menu {
+    position: absolute; z-index: 15; min-width: 150px; padding: 6px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.15);
+  }
+  .menu button {
+    display: block; width: 100%; text-align: left; border: none; background: none; color: var(--text);
+    font-size: 15px; padding: 10px 12px; border-radius: 8px; cursor: pointer;
+  }
+  .menu button:hover { background: var(--bg); }
+  .menu button.danger { color: var(--loc); }
+  .edited { font-size: 11px; color: var(--muted); }
+  /* 수정·삭제·비밀번호 창 */
+  #modal-bg {
+    position: fixed; inset: 0; z-index: 20; background: rgba(0,0,0,.45);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #modal {
+    width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto;
+    background: var(--card); border-radius: 18px 18px 0 0; display: grid; gap: 12px;
+    padding: 18px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  }
+  #modal h2 { margin: 0; font-size: 18px; }
+  #modal p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.5; }
+  #modal label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  #modal input {
+    font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--bg); color: var(--text); width: 100%; min-width: 0;
+  }
+  #modal .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #modal .acts { display: flex; gap: 8px; }
+  #modal .acts button {
+    flex: 1; padding: 12px; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text);
+  }
+  #modal .acts .ok { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  #modal .acts .del { background: var(--loc); color: #fff; border-color: var(--loc); }
+  #modal .acts button:disabled { opacity: .5; }
+  #modal .err { color: var(--loc); font-size: 13px; font-weight: 600; min-height: 1em; }
+  #toast {
+    position: fixed; left: 50%; transform: translateX(-50%); z-index: 30;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px;
+  }
   .note { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; line-height: 1.5; }
   .msg { text-align: center; color: var(--muted); padding: 40px 0; }
   a:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -146,6 +197,8 @@
     </div>
     <div id="add-msg" role="status"></div>
   </form>
+  <div id="modal-bg" hidden><div id="modal" role="dialog" aria-modal="true"></div></div>
+  <div id="toast" role="status" hidden></div>
   <p class="note">일정은 당근 모임에서 자동으로 가져와요.<br>참석 인원은 당근 앱에서 보는 게 가장 정확해요.</p>
 </main>
 
@@ -205,7 +258,7 @@ function render() {
     html += `<article class="meet${open ? "" : " closed"}">
       <div class="thumb">${m.image ? `<img src="${esc(m.image)}" alt="" loading="lazy">` : "🎲"}</div>
       <div class="info">
-        <div class="top"><span class="time">${esc(timeLabel(d))}</span><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span></div>
+        <div class="top"><span class="time">${esc(timeLabel(d))}${m.edited ? ` <span class="edited">· 직접 수정됨</span>` : ""}</span><span class="right"><span class="tags">${statusTag}${m.groupOnly ? `<span class="tag member">멤버 전용</span>` : ""}</span><button class="more" type="button" data-more="${esc(m.id)}" aria-label="일정 메뉴">⋮</button></span></div>
         <div class="name">${esc(m.name)}</div>
         ${m.place ? `<div class="place">📍 ${esc(m.place.name)}${m.place.address ? ` <small>${esc(m.place.address)}</small>` : ""}</div>` : ""}
         ${m.description ? `<div class="desc">${esc(m.description)}</div>` : ""}
@@ -297,7 +350,128 @@ function setupAdd(cfg) {
   });
 }
 
-getJson("meetup-config.json").catch(() => ({})).then(cfg => { setupAdd(cfg); load(cfg); });
+// ── ⋮ 메뉴: 수정 · 링크 복사 · 삭제 (수정·삭제는 모임장 비밀번호 필요) ─────────────
+let CFG = {};
+const $ = id => document.getElementById(id);
+const toast = text => { const t = $("toast"); t.textContent = text; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 2200); };
+const post = body => fetch(CFG.liveUrl, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(body) })
+  .then(r => r.json());
+const PIN_KEY = "meetupAdminPin";
+const savedPin = () => { try { return localStorage.getItem(PIN_KEY) || ""; } catch { return ""; } };
+const keepPin = p => { try { p ? localStorage.setItem(PIN_KEY, p) : localStorage.removeItem(PIN_KEY); } catch {} };
+const toKstInput = iso => new Date(new Date(iso).getTime() + 9 * 3600e3).toISOString().slice(0, 16);
+const fromKstInput = v => new Date(v + ":00+09:00").toISOString();
+const shareLink = m => m.link || oneLink(scheme(`/group/${GROUP_DB_ID}/meetups/${m.id}`));
+
+function closeMenu() { document.querySelectorAll(".menu").forEach(x => x.remove()); }
+function closeModal() { $("modal-bg").hidden = true; $("modal").innerHTML = ""; }
+function openModal(html) { $("modal").innerHTML = html; $("modal-bg").hidden = false; }
+$("modal-bg").addEventListener("click", e => { if (e.target.id === "modal-bg") closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeMenu(); closeModal(); } });
+
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-more]");
+  if (!btn) { if (!e.target.closest(".menu")) closeMenu(); return; }
+  e.stopPropagation();
+  const open = document.querySelector(".menu");
+  closeMenu();
+  if (open && open.dataset.for === btn.dataset.more) return;
+  const m = all.find(x => x.id === btn.dataset.more); if (!m) return;
+  const menu = document.createElement("div");
+  menu.className = "menu"; menu.dataset.for = m.id;
+  menu.innerHTML = (CFG.liveUrl ? `<button type="button" data-act="edit">수정</button>` : "") +
+    `<button type="button" data-act="copy">링크 복사</button>` +
+    (CFG.liveUrl ? `<button type="button" data-act="delete" class="danger">삭제</button>` : "");
+  document.body.appendChild(menu);
+  const r = btn.getBoundingClientRect();
+  menu.style.top = (r.bottom + window.scrollY + 4) + "px";
+  menu.style.left = Math.max(8, Math.min(r.right + window.scrollX - menu.offsetWidth, document.documentElement.clientWidth - menu.offsetWidth - 8)) + "px";
+  menu.addEventListener("click", ev => {
+    const act = ev.target.closest("[data-act]"); if (!act) return;
+    closeMenu();
+    if (act.dataset.act === "copy") copyLink(m);
+    if (act.dataset.act === "edit") withPin(() => editForm(m));
+    if (act.dataset.act === "delete") withPin(() => deleteForm(m));
+  });
+});
+
+async function copyLink(m) {
+  const link = shareLink(m);
+  try { await navigator.clipboard.writeText(link); toast("링크를 복사했어요"); }
+  catch {
+    openModal(`<h2>링크 복사</h2><p>아래 주소를 길게 눌러 복사해 주세요.</p>
+      <input id="m-link" readonly value="${esc(link)}"><div class="acts"><button type="button" id="m-close">닫기</button></div>`);
+    $("m-link").select(); $("m-close").onclick = closeModal;
+  }
+}
+
+// 비밀번호를 한 번 맞히면 이 휴대폰에 기억해요
+function withPin(next) {
+  if (savedPin()) return next();
+  openModal(`<h2>모임장 확인</h2><p>수정과 삭제는 모임장만 할 수 있어요. 비밀번호를 입력해 주세요.</p>
+    <label>비밀번호<input id="m-pin" type="password" autocomplete="current-password"></label>
+    <div class="err" id="m-err"></div>
+    <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">확인</button></div>`);
+  $("m-pin").focus();
+  $("m-cancel").onclick = closeModal;
+  const go = async () => {
+    const pin = $("m-pin").value; if (!pin) return;
+    $("m-ok").disabled = true;
+    try {
+      const r = await post({ action: "check", pin });
+      if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
+      keepPin(pin); closeModal(); next();
+    } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
+  };
+  $("m-ok").onclick = go;
+  $("m-pin").addEventListener("keydown", e => { if (e.key === "Enter") go(); });
+}
+
+async function adminPost(body, errEl, btn) {
+  btn.disabled = true;
+  try {
+    const r = await post({ ...body, pin: savedPin() });
+    if (r.badPin) keepPin("");
+    if (!r.ok) { errEl.textContent = r.error; btn.disabled = false; return null; }
+    return r;
+  } catch { errEl.textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; btn.disabled = false; return null; }
+}
+
+function editForm(m) {
+  openModal(`<h2>일정 수정</h2><p>${esc(m.name)}<br>사이트에 보이는 내용만 바뀌어요. 당근 일정은 그대로예요.</p>
+    <label>장소<input id="m-place" type="text" maxlength="60" value="${esc(m.place ? m.place.name : "")}" placeholder="예: 아지트"></label>
+    <div class="two">
+      <label>참석 인원<input id="m-cur" type="number" inputmode="numeric" min="0" value="${m.current ?? ""}"></label>
+      <label>정원<input id="m-max" type="number" inputmode="numeric" min="1" value="${m.max ?? ""}"></label>
+    </div>
+    <label>시간<input id="m-time" type="datetime-local" value="${esc(toKstInput(m.meetAt))}"></label>
+    <div class="err" id="m-err"></div>
+    <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="ok" id="m-ok">저장</button></div>`);
+  $("m-cancel").onclick = closeModal;
+  $("m-ok").onclick = async () => {
+    const cur = $("m-cur").value, max = $("m-max").value, time = $("m-time").value;
+    if (cur && max && +cur > +max) { $("m-err").textContent = "참석 인원이 정원보다 많아요."; return; }
+    const r = await adminPost({ action: "edit", id: m.id, place: $("m-place").value, current: cur, max, meetAt: time ? fromKstInput(time) : "" }, $("m-err"), $("m-ok"));
+    if (!r) return;
+    if (r.meetup) all = upcoming([...all.filter(x => x.id !== m.id), r.meetup]);
+    render(); closeModal(); toast("수정했어요");
+  };
+}
+
+function deleteForm(m) {
+  openModal(`<h2>일정 삭제</h2><p><b>${esc(m.name)}</b> 일정을 사이트에서 뺄까요?<br>당근 일정은 지워지지 않아요. 당근에서도 지우려면 당근 앱에서 지워 주세요.</p>
+    <div class="err" id="m-err"></div>
+    <div class="acts"><button type="button" id="m-cancel">취소</button><button type="button" class="del" id="m-ok">삭제</button></div>`);
+  $("m-cancel").onclick = closeModal;
+  $("m-ok").onclick = async () => {
+    const r = await adminPost({ action: "delete", id: m.id }, $("m-err"), $("m-ok"));
+    if (!r) return;
+    all = all.filter(x => x.id !== m.id);
+    render(); closeModal(); toast("사이트에서 뺐어요");
+  };
+}
+
+getJson("meetup-config.json").catch(() => ({})).then(cfg => { CFG = cfg; setupAdd(cfg); load(cfg); });
 </script>
 </body>
 </html>
