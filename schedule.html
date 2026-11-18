@@ -521,8 +521,20 @@ const fromKstInput = v => new Date(v + ":00+09:00").toISOString();
 const shareLink = m => m.link || oneLink(scheme(`/group/${GROUP_DB_ID}/meetups/${m.id}`));
 
 function closeMenu() { document.querySelectorAll(".menu").forEach(x => x.remove()); }
-function closeModal() { $("modal-bg").hidden = true; $("modal").innerHTML = ""; }
-function openModal(html) { $("modal").innerHTML = html; $("modal-bg").hidden = false; }
+// 창을 열 때 방문 기록을 하나 넣어서, 휴대폰 뒤로가기를 누르면 창만 닫히게 해요
+let modalInHistory = false;
+function closeModal(fromBack) {
+  $("modal-bg").hidden = true; $("modal").innerHTML = "";
+  if (modalInHistory) { modalInHistory = false; if (fromBack !== true) history.back(); }
+}
+function openModal(html) {
+  $("modal").innerHTML = html; $("modal-bg").hidden = false;
+  if (!modalInHistory) { history.pushState({ modal: true }, ""); modalInHistory = true; }
+}
+window.addEventListener("popstate", () => {
+  if (modalInHistory) { modalInHistory = false; closeModal(true); }
+  closeMenu();
+});
 $("modal-bg").addEventListener("click", e => { if (e.target.id === "modal-bg") closeModal(); });
 document.addEventListener("keydown", e => { if (e.key === "Escape") { closeMenu(); closeModal(); } });
 
@@ -577,7 +589,7 @@ function withPin(next) {
     try {
       const r = await post({ action: "check", pin });
       if (!r.ok) { $("m-err").textContent = r.error; $("m-ok").disabled = false; return; }
-      keepPin(pin); closeModal(); next();
+      keepPin(pin); next(); // 같은 창에서 바로 다음 화면으로 (뒤로가기 기록 유지)
     } catch { $("m-err").textContent = "연결이 안 돼요. 잠시 뒤 다시 해 주세요."; $("m-ok").disabled = false; }
   };
   $("m-ok").onclick = go;
