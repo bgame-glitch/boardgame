@@ -4,32 +4,15 @@
     "dbId": "412730",
     "webUrl": "https://www.daangn.com/kr/group/xgfk9uzqfji2/"
   },
-  "fetchedAt": "2026-11-19T00:45:33.847Z",
+  "fetchedAt": "2026-11-21T00:40:14.443Z",
   "meetups": [
-    {
-      "id": "306612885",
-      "name": "초보도 가능한 초중급 오를레앙, 라",
-      "image": "https://img.kr.gcp-karroter.net/community/community/20261112/2f454809-cc49-4f81-a973-c33b1273c3ea.png?service=community",
-      "groupOnly": true,
-      "status": "OPENED",
-      "current": 2,
-      "max": 4,
-      "meetAt": "2026-11-19T11:00:00Z",
-      "place": {
-        "name": "쏭지트",
-        "address": "대구광역시 달성군 유가읍 테크노북로9길 16",
-        "lat": 35.69260475917332,
-        "lon": 128.46519902799287
-      },
-      "guests": []
-    },
     {
       "id": "306684423",
       "name": "파티파티?전략전략?🔥불토불태우기🔥",
       "image": null,
       "groupOnly": false,
       "status": "OPENED",
-      "current": 4,
+      "current": 3,
       "max": 8,
       "meetAt": "2026-11-21T06:00:00Z",
       "place": {
@@ -37,23 +20,6 @@
         "address": "",
         "lat": 35.699049501054844,
         "lon": 128.45997559895204
-      },
-      "guests": []
-    },
-    {
-      "id": "306547470",
-      "name": "시계탑에 흐른피ㅡ 마피아",
-      "image": "https://img.kr.gcp-karroter.net/community/community/20261108/81209b07-78a1-400d-a914-160e88ddea4c.jpeg?service=community",
-      "groupOnly": false,
-      "status": "OPENED",
-      "current": 6,
-      "max": 17,
-      "meetAt": "2026-11-22T05:00:00Z",
-      "place": {
-        "name": "엘리시아",
-        "address": "대구광역시 달성군 유가읍 테크노중앙대로 326-42",
-        "lat": 35.6991249656192,
-        "lon": 128.459958325324
       },
       "guests": []
     },
@@ -75,6 +41,23 @@
       "guests": []
     },
     {
+      "id": "306740646",
+      "name": "[머더]0719",
+      "image": "https://img.kr.gcp-karroter.net/community/community/20261120/7cf51f55-10d5-479d-a25b-51d9ecdf87b0.jpeg?service=community",
+      "groupOnly": true,
+      "status": "FULLY_RECRUITED",
+      "current": 4,
+      "max": 4,
+      "meetAt": "2026-11-24T11:00:00Z",
+      "place": {
+        "name": "아지트",
+        "address": "대구광역시 달성군 유가읍 테크노중앙대로 326-42",
+        "lat": 35.69911427617845,
+        "lon": 128.45995477344252
+      },
+      "guests": []
+    },
+    {
       "id": "306708103",
       "name": "프로스트헤이븐 정리 및 마무리파티",
       "image": "https://img.kr.gcp-karroter.net/community/community/20261118/87c5c1c3-3598-45cc-bf6b-205903d9a1ca.jpeg?service=community",
@@ -91,6 +74,23 @@
       },
       "description": "1년간 여정을 즐겼던 프로스트헤이븐~\n게임정리및 뒤풀이 합니다.",
       "link": "https://www.daangn.com/kr/meetups/Pw1xrko5/",
+      "guests": []
+    },
+    {
+      "id": "306739925",
+      "name": "[파티]불금 누구든지 오세요~~신입환영",
+      "image": "https://img.kr.gcp-karroter.net/community/community/20261120/51c0c50a-25e0-452c-bbb6-ef65f39a7daa.jpeg?service=community",
+      "groupOnly": false,
+      "status": "OPENED",
+      "current": 4,
+      "max": 15,
+      "meetAt": "2026-11-27T10:00:00Z",
+      "place": {
+        "name": "아지트",
+        "address": "대구광역시 달성군 유가읍 테크노중앙대로 326-42",
+        "lat": 35.699107005496884,
+        "lon": 128.4599614057363
+      },
       "guests": []
     }
   ],
