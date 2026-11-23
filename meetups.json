@@ -4,25 +4,8 @@
     "dbId": "412730",
     "webUrl": "https://www.daangn.com/kr/group/xgfk9uzqfji2/"
   },
-  "fetchedAt": "2026-11-21T00:40:14.443Z",
+  "fetchedAt": "2026-11-23T00:37:46.479Z",
   "meetups": [
-    {
-      "id": "306684423",
-      "name": "파티파티?전략전략?🔥불토불태우기🔥",
-      "image": null,
-      "groupOnly": false,
-      "status": "OPENED",
-      "current": 3,
-      "max": 8,
-      "meetAt": "2026-11-21T06:00:00Z",
-      "place": {
-        "name": "아지트",
-        "address": "",
-        "lat": 35.699049501054844,
-        "lon": 128.45997559895204
-      },
-      "guests": []
-    },
     {
       "id": "306619647",
       "name": "이 세계에 오신 것을 환영합니다[0179 후속]",
@@ -90,6 +73,23 @@
         "address": "대구광역시 달성군 유가읍 테크노중앙대로 326-42",
         "lat": 35.699107005496884,
         "lon": 128.4599614057363
+      },
+      "guests": []
+    },
+    {
+      "id": "306610132",
+      "name": "서스펙트 게임 2차",
+      "image": "https://img.kr.gcp-karroter.net/community/community/20261102/f5393e93-91ad-4dcd-befa-0f10bca1cc92.png?service=community",
+      "groupOnly": true,
+      "status": "FULLY_RECRUITED",
+      "current": 3,
+      "max": 3,
+      "meetAt": "2026-12-04T11:00:00Z",
+      "place": {
+        "name": "쏭지트",
+        "address": "대구광역시 달성군 유가읍 테크노북로9길 16",
+        "lat": 35.69239782585322,
+        "lon": 128.46517897189983
       },
       "guests": []
     }
