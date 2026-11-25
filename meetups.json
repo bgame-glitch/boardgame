@@ -4,42 +4,8 @@
     "dbId": "412730",
     "webUrl": "https://www.daangn.com/kr/group/xgfk9uzqfji2/"
   },
-  "fetchedAt": "2026-11-23T00:37:46.479Z",
+  "fetchedAt": "2026-11-25T00:44:38.618Z",
   "meetups": [
-    {
-      "id": "306619647",
-      "name": "이 세계에 오신 것을 환영합니다[0179 후속]",
-      "image": "https://img.kr.gcp-karroter.net/community/community/20261112/bc05918e-4e1c-4136-9540-c70fa89e3a3e.png?service=community",
-      "groupOnly": true,
-      "status": "FULLY_RECRUITED",
-      "current": 4,
-      "max": 4,
-      "meetAt": "2026-11-24T10:30:00Z",
-      "place": {
-        "name": "아지트",
-        "address": "",
-        "lat": 35.69923244188554,
-        "lon": 128.45989220820368
-      },
-      "guests": []
-    },
-    {
-      "id": "306740646",
-      "name": "[머더]0719",
-      "image": "https://img.kr.gcp-karroter.net/community/community/20261120/7cf51f55-10d5-479d-a25b-51d9ecdf87b0.jpeg?service=community",
-      "groupOnly": true,
-      "status": "FULLY_RECRUITED",
-      "current": 4,
-      "max": 4,
-      "meetAt": "2026-11-24T11:00:00Z",
-      "place": {
-        "name": "아지트",
-        "address": "대구광역시 달성군 유가읍 테크노중앙대로 326-42",
-        "lat": 35.69911427617845,
-        "lon": 128.45995477344252
-      },
-      "guests": []
-    },
     {
       "id": "306708103",
       "name": "프로스트헤이븐 정리 및 마무리파티",
