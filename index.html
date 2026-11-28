@@ -210,7 +210,6 @@
   <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
   <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
   <div class="group"><div class="label">플레이 시간</div><div class="chips" id="f-time"></div></div>
-  <div class="group"><div class="label">주인</div><div class="chips" id="f-owner"></div></div>
   <div class="group"><div class="label">정렬</div><div class="chips" id="f-sort"></div></div>
 </section>
 <main>
@@ -243,7 +242,7 @@ const TIME_OPTIONS = [
 
 let games = [];
 let query = "";
-const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set(), time: new Set(), owner: new Set() };
+const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set(), time: new Set() };
 
 const byName = (a, b) => a.name.localeCompare(b.name, "ko");
 const SORTS = {
@@ -358,13 +357,6 @@ function renderFilters() {
   TIME_OPTIONS.forEach(o =>
     tm.appendChild(chip(o.label, sel.time.has(o.key), () => { toggle(sel.time, o.key); update(); })));
 
-  // 주인: 주인이 적힌 게임이 하나라도 있을 때만 보여줘요
-  const owners = [...new Set(games.map(x => x.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
-  const ow = document.getElementById("f-owner"); ow.innerHTML = "";
-  ow.parentElement.hidden = !owners.length;
-  owners.forEach(v =>
-    ow.appendChild(chip(v, sel.owner.has(v), () => { toggle(sel.owner, v); update(); })));
-
   const so = document.getElementById("f-sort"); so.innerHTML = "";
   Object.entries(SORTS).forEach(([k, v]) =>
     so.appendChild(chip(v.label, sortKey === k, () => { sortKey = k; update(); })));
@@ -391,7 +383,6 @@ function matches(x) {
     if (sel.players === 6 ? x.max < 6 : (x.min > sel.players || x.max < sel.players)) return false;
   }
   if (sel.diff.size && !sel.diff.has(x.diff)) return false;
-  if (sel.owner.size && !sel.owner.has(x.owner)) return false;
   if (sel.time.size) {
     if (!x.time) return false;
     if (!TIME_OPTIONS.some(o => sel.time.has(o.key) && o.test(x.time))) return false;
@@ -588,7 +579,7 @@ const toggleBtn = document.getElementById("ftoggle");
 const barEl = document.getElementById("bar");
 
 function updateBadge() {
-  const n = sel.genre.size + sel.sub.size + (sel.players !== null ? 1 : 0) + sel.diff.size + sel.time.size + sel.owner.size;
+  const n = sel.genre.size + sel.sub.size + (sel.players !== null ? 1 : 0) + sel.diff.size + sel.time.size;
   document.getElementById("fbadge").textContent = n ? n : "";
 }
 
@@ -622,7 +613,7 @@ document.getElementById("search").addEventListener("input", e => {
 });
 
 document.getElementById("reset").onclick = () => {
-  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.time.clear(); sel.owner.clear(); sel.players = null;
+  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.time.clear(); sel.players = null;
   sortKey = "name"; query = ""; document.getElementById("search").value = "";
   update();
 };
