@@ -118,6 +118,10 @@
   .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
   .name { font-size: 16px; font-weight: 700; }
   .rating { font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .best-badge {
+    display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
+    background: var(--accent); color: var(--accent-text); font-size: 11px; font-weight: 600; vertical-align: 2px;
+  }
   .meta { font-size: 13px; color: var(--muted); }
   .loc { margin-top: 6px; font-size: 15px; font-weight: 600; color: var(--loc); }
   .empty, .msg { text-align: center; color: var(--muted); padding: 40px 0; }
@@ -362,6 +366,13 @@ function subOptions() {
   return uniq(src.map(x => x.sub));
 }
 
+// 고른 인원이 그 게임의 베스트 인원인지 (6명+는 베스트 6인 이상)
+function isBest(x) {
+  const b = parseInt(x.best, 10);
+  if (!b || sel.players === null) return false;
+  return sel.players === 6 ? b >= 6 : b === sel.players;
+}
+
 function matches(x) {
   if (query && !norm(x.name).includes(query)) return false;
   if (sel.genre.size && !sel.genre.has(x.genre)) return false;
@@ -388,8 +399,11 @@ function setImage(box, url) {
 
 function renderList() {
   const list = document.getElementById("list");
-  const res = games.filter(matches).sort(SORTS[sortKey].fn);
-  document.getElementById("count").textContent = `게임 ${res.length}개`;
+  // 인원을 고르면 그 인원이 베스트인 게임을 맨 위로, 그 안에서는 고른 정렬 순서대로
+  const res = games.filter(matches).sort((a, b) =>
+    (sel.players !== null ? isBest(b) - isBest(a) : 0) || SORTS[sortKey].fn(a, b));
+  const bestCount = sel.players !== null ? res.filter(isBest).length : 0;
+  document.getElementById("count").textContent = `게임 ${res.length}개` + (bestCount ? ` · 🏆 베스트 ${bestCount}개 먼저` : "");
   if (!res.length) { list.innerHTML = '<div class="empty">조건에 맞는 게임이 없어요</div>'; return; }
   list.innerHTML = "";
   res.forEach(x => {
@@ -407,6 +421,11 @@ function renderList() {
       </div>`;
     setImage(el.querySelector(".thumb"), x.img);
     el.querySelector(".name").textContent = x.name;
+    if (sel.players !== null && isBest(x)) {
+      const badge = document.createElement("span");
+      badge.className = "best-badge"; badge.textContent = `🏆 ${x.best}인 베스트`;
+      el.querySelector(".name").appendChild(badge);
+    }
     el.querySelector(".rating").textContent = x.rating ? "⭐ " + x.rating.toFixed(1) : "";
     el.querySelector(".meta").textContent = facts.join("  |  ");
     el.querySelector(".loc").textContent = "📍 " + (x.loc || "위치 미등록");
