@@ -210,6 +210,7 @@
   <div class="group"><div class="label">인원</div><div class="chips" id="f-players"></div></div>
   <div class="group"><div class="label">난이도</div><div class="chips" id="f-diff"></div></div>
   <div class="group"><div class="label">플레이 시간</div><div class="chips" id="f-time"></div></div>
+  <div class="group"><div class="label">주인</div><div class="chips" id="f-owner"></div></div>
   <div class="group"><div class="label">정렬</div><div class="chips" id="f-sort"></div></div>
 </section>
 <main>
@@ -242,7 +243,7 @@ const TIME_OPTIONS = [
 
 let games = [];
 let query = "";
-const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set(), time: new Set() };
+const sel = { genre: new Set(), sub: new Set(), players: null, diff: new Set(), time: new Set(), owner: new Set() };
 
 const byName = (a, b) => a.name.localeCompare(b.name, "ko");
 const SORTS = {
@@ -278,7 +279,7 @@ const diffBucket = v => v < 2 ? 1 : v < 3 ? 2 : 3;
 // 정렬용 숫자: 보드라이프 난이도가 있으면 그 값, 없으면 3단계 값을 대략 환산
 const diffValue = x => x.blDiff ?? (x.diff ? x.diff + 0.5 : null);
 
-// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도(1~3), 위치, 평점, 이미지, 시간(분), 보드라이프번호, 보드라이프난이도, 베스트인원
+// 시트 열 순서: 이름, 장르, 세부장르, 최소인원, 최대인원, 난이도(1~3), 위치, 평점, 이미지, 시간(분), 보드라이프번호, 보드라이프난이도, 베스트인원, 주인
 function toGames(rows) {
   return rows.slice(1).map(r => {
     const blDiff = parseFloat(r[11]) || null;
@@ -297,6 +298,7 @@ function toGames(rows) {
     time: parseInt(r[9], 10) || null,
     blId: (r[10] || "").trim(),
     best: (r[12] || "").trim().replace(/인$/, ""),
+    owner: (r[13] || "").trim(),
     };
   }).filter(g => g.name);
 }
@@ -356,6 +358,13 @@ function renderFilters() {
   TIME_OPTIONS.forEach(o =>
     tm.appendChild(chip(o.label, sel.time.has(o.key), () => { toggle(sel.time, o.key); update(); })));
 
+  // 주인: 주인이 적힌 게임이 하나라도 있을 때만 보여줘요
+  const owners = [...new Set(games.map(x => x.owner).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ko"));
+  const ow = document.getElementById("f-owner"); ow.innerHTML = "";
+  ow.parentElement.hidden = !owners.length;
+  owners.forEach(v =>
+    ow.appendChild(chip(v, sel.owner.has(v), () => { toggle(sel.owner, v); update(); })));
+
   const so = document.getElementById("f-sort"); so.innerHTML = "";
   Object.entries(SORTS).forEach(([k, v]) =>
     so.appendChild(chip(v.label, sortKey === k, () => { sortKey = k; update(); })));
@@ -382,6 +391,7 @@ function matches(x) {
     if (sel.players === 6 ? x.max < 6 : (x.min > sel.players || x.max < sel.players)) return false;
   }
   if (sel.diff.size && !sel.diff.has(x.diff)) return false;
+  if (sel.owner.size && !sel.owner.has(x.owner)) return false;
   if (sel.time.size) {
     if (!x.time) return false;
     if (!TIME_OPTIONS.some(o => sel.time.has(o.key) && o.test(x.time))) return false;
@@ -514,6 +524,7 @@ function openSheet(x) {
     ["장르", [x.genre, x.sub].filter(Boolean).join(" · ")],
     ["인원", playersText(x)],
     ["시간", timeText(x.time)],
+    ["주인", x.owner],
     ["난이도", x.blDiff ? `${x.blDiff.toFixed(2)} / 5 (보드라이프)` : x.diff ? DIFF_LABEL[x.diff] : ""],
   ].filter(r => r[1]);
   const dl = sheet.querySelector("dl");
@@ -577,7 +588,7 @@ const toggleBtn = document.getElementById("ftoggle");
 const barEl = document.getElementById("bar");
 
 function updateBadge() {
-  const n = sel.genre.size + sel.sub.size + (sel.players !== null ? 1 : 0) + sel.diff.size + sel.time.size;
+  const n = sel.genre.size + sel.sub.size + (sel.players !== null ? 1 : 0) + sel.diff.size + sel.time.size + sel.owner.size;
   document.getElementById("fbadge").textContent = n ? n : "";
 }
 
@@ -611,7 +622,7 @@ document.getElementById("search").addEventListener("input", e => {
 });
 
 document.getElementById("reset").onclick = () => {
-  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.time.clear(); sel.players = null;
+  sel.genre.clear(); sel.sub.clear(); sel.diff.clear(); sel.time.clear(); sel.owner.clear(); sel.players = null;
   sortKey = "name"; query = ""; document.getElementById("search").value = "";
   update();
 };
